@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from tst_helper_fun import *
+from help_fun import *
 from jive.jive.ajive_fig2 import *
 from jive.jive.jive import *
 
