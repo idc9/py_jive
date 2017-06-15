@@ -7,7 +7,7 @@ from lin_alg_fun import get_svd, svd_approx, scree_plot
 
 class JiveBlock(object):
 
-    def __init__(self, X, name=None):
+    def __init__(self, X, full=True, name=None):
         """
         Stores a single data block (rows as observations).
 
@@ -15,17 +15,19 @@ class JiveBlock(object):
         ---------
         X: a data block
 
+        full: whether or not to save the full I, J, E matrices
+
         name: the (optional) name of the block
         """
-
-        self.name = name
-
         self.X = X
         self.n = X.shape[0]
         self.d = X.shape[1]
 
         # SVD for initial signal space extraction
         self.U, self.D, self.V = get_svd(X)
+
+        self.name = name
+        self.full = full
 
     def scree_plot(self):
         """
@@ -68,13 +70,23 @@ class JiveBlock(object):
     def final_decomposition(self, joint_scores):
         """
         Compute the JIVE decomposition of the block.
+
+        Parameters
+        ---------
+        joint_scores: joint scors matrix
         """
         self.estimate_joint_space(joint_scores)
         self.estimate_individual_space(joint_scores)
 
-        self.E = self.X - (self.J + self.I)
         self.individual_rank = len(self.block_individual_sv)
         self.joint_rank = joint_scores.shape[1]  # not necessary to save
+
+        # estimate noise matrix
+        if self.full:
+            self.E = self.X - (self.J + self.I)
+            # self.X = None  # TODO: I think I can kill this here
+        else:
+            self.E = np.matrix([])
 
     def estimate_joint_space(self, joint_scores):
         """
@@ -82,7 +94,8 @@ class JiveBlock(object):
         """
         self.J, self.block_joint_scores,  self.block_joint_sv, \
         self.block_joint_loadings = get_block_joint_space(X=self.X,
-                                                          joint_scores=joint_scores)
+                                                          joint_scores=joint_scores,
+                                                          full=self.full)
 
     def estimate_individual_space(self, joint_scores):
         """
@@ -92,11 +105,13 @@ class JiveBlock(object):
             self.block_individual_sv, self.block_individual_loadings = \
             get_block_individual_space(X=self.X,
                                        joint_scores=joint_scores,
-                                       sv_threshold=self.sv_threshold)
+                                       sv_threshold=self.sv_threshold,
+                                       full=self.full)
 
     def get_jive_estimates(self):
         """
-        Returns all JIVE estimates
+        Returns all all estimated JIVE information including J, I, E and the
+        respective SVDs
         """
         estimates = {}
         estimates['joint'] = {'full': self.J,
@@ -115,6 +130,32 @@ class JiveBlock(object):
 
         return estimates
 
+    def get_full_jive_estimates(self):
+        """
+        Returns only the full JIVE estimaes J, I, E
+        """
+        estimates = {}
+        if self.full:
+            estimates['J'] = self.J
+            estimates['I'] = self.I
+            estimates['E'] = self.E
+        else:
+            # compute full matrices on the spot.
+            estimates['J'] = np.dot(self.block_joint_scores,
+                                    np.dot(np.diag(self.block_joint_sv),
+                                           self.block_joint_loadings.T))
+
+            estimates['I'] = np.dot(self.block_individual_scores,
+                                    np.dot(np.diag(self.block_individual_sv),
+                                           self.block_individual_loadings.T))
+
+            estimates['E'] = self.X - (estimates['I'] + estimates['J'])
+
+            # TODO: I think I can kill this here
+            # self.X = None
+
+        return estimates
+
 
 def get_sv_threshold(singular_values, rank):
     """
@@ -130,14 +171,17 @@ def get_sv_threshold(singular_values, rank):
     return .5 * (singular_values[rank - 1] + singular_values[rank])
 
 
-def get_block_joint_space(X, joint_scores):
+def get_block_joint_space(X, joint_scores, full=True):
     """"
     Finds a block's joint space representation and the SVD of this space
 
     Paramters
     ---------
     X: observed data block
+
     joint_scores: joint scores matrix for joint space
+
+    full: whether or not to return the full J matrix
 
     Output
     ------
@@ -157,18 +201,26 @@ def get_block_joint_space(X, joint_scores):
     block_joint_sv = block_joint_sv[0:joint_rank]
     block_joint_loadings = block_joint_loadings[:, 0:joint_rank]
 
+    # possibly kill J matrix
+    if not full:
+        J = np.matrix([])
+
     return J, block_joint_scores, block_joint_sv, block_joint_loadings
 
 
-def get_block_individual_space(X, joint_scores, sv_threshold):
+def get_block_individual_space(X, joint_scores, sv_threshold, full=True):
     """"
     Finds a block's individual space representation and the SVD of this space
 
     Paramters
     ---------
     X: observed data block
+
     joint_scores: joint scores matrix for joint space
+
     sv_threshold: singular value threshold
+
+    full: whether or not to return the full I matrix
 
     Output
     ------
@@ -194,6 +246,10 @@ def get_block_individual_space(X, joint_scores, sv_threshold):
     I = np.dot(block_individual_scores,
                np.dot(np.diag(block_individual_sv),
                       block_individual_loadings.T))
+
+    # kill I matrix
+    if not full:
+        I = np.matrix([])
 
     return I, block_individual_scores, block_individual_sv, block_individual_loadings
 

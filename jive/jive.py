@@ -7,7 +7,8 @@ from jive_block import JiveBlock
 
 class Jive(object):
 
-    def __init__(self, blocks, wedin_estimate=True, show_scree_plot=True):
+    def __init__(self, blocks, wedin_estimate=True, full=True,
+                 show_scree_plot=True):
         """
         Paramters
         ---------
@@ -17,16 +18,21 @@ class Jive(object):
         (True/False) if False then the user has to manually set the joint space
         rank
 
+        full: whether or not to save the I, J, E matrices
+
         show_scree_plot: show the scree plot of the initial SVD
         """
+        print full
         self.K = len(blocks)  # number of blocks
 
-        self.n = blocks[0].shape[0]  # number of data points
+        self.n = blocks[0].shape[0]  # number of observation
+        self.dimensions = [blocks[k].shape[1] for k in range(self.K)]
 
         # initialize blocks
         self.blocks = []
         for k in range(self.K):
-            self.blocks.append(JiveBlock(blocks[k], 'block ' + str(k)))
+            name = 'block ' + str(k)
+            self.blocks.append(JiveBlock(blocks[k], full, name))
 
         # scree plot to decide on signal ranks
         if show_scree_plot:
@@ -40,8 +46,6 @@ class Jive(object):
         Returns the singluar values for the initial SVD for each block.
         """
         # TODO: rename
-        # TODO: at some point we may delete the block singular values,
-        # do something intelligent at this point
         return [self.blocks[k].D for k in range(self.K)]
 
     def scree_plot(self):
@@ -167,24 +171,62 @@ class Jive(object):
 
     def get_jive_estimates(self):
         """
+        Returns the jive decomposition for each data block. We can decomose
+        the full data matix as
+
+        X = J + I + E
+
+        then decompose both J and I with an SVD
+
+        J = U D V.T
+        I = U D V.T
+
+        Output
+        ------
+        a list of block JIVE estimates which have the following structure
+
+        estimates[k]['individual']['full'] returns the full individual estimate
+        for the kth data block (this is the I matrix). You can replace
+        'individual' with 'joint'. Similarly you can replace 'full' with
+        'U', 'D', 'V', 'rank'
+        """
+        return [self.blocks[k].get_jive_estimates() for k in range(self.K)]
+
+    def get_joint_space_estimate(self):
+        """"
+        Returns the SVD of the concatonated scores matrix.
+        """
+        return {'U': self.joint_scores,
+                'D': self.joint_sv,
+                'V': self.joint_loadings,
+                'rank': self.joint_rank}
+
+    def get_block_estimates(self):
+        """
         Returns the jive decomposition for each data block.
 
         Output
         ------
-        a list of block JIVE estimates i.e. estimates[k]['J'] gives the
-        estimated J matrix for the kth block
+        a list of block JIVE estimates which have the following structure
+
+        estimates[k]['individual']['full'] returns the full individual estimate
+        for the kth data block (this is the I matrix). You can replace
+        'individual' with 'joint'. Similarly you can replace 'full' with
+        'U', 'D', 'V', 'ranks'
         """
-        estimates = [0] * self.K
-        for k in range(self.K):
-            # estimates[k] = {'J': self.blocks[k].J,
-            #                 'I': self.blocks[k].I,
-            #                 'E': self.blocks[k].E,
-            #                 'individual_rank': self.blocks[k].individual_rank}
+        return [self.blocks[k].get_jive_estimates() for k in range(self.K)]
 
-            estimates[k] = self.blocks[k].get_jive_estimates()
+    def get_block_estimates_full(self):
+        """
+        Returns the jive decomposition for each data block. Note of full=False
+        you can only run this method onces because it will kill each X matrix.
 
-        # estimates['joint_rank'] = self.joint_rank
-        return estimates
+        Output
+        ------
+        a list of the full block estimates (I, J, E) i.e. estimates[k]['J']
+        """
+        return [self.blocks[k].get_full_jive_estimates()
+                for k in range(self.K)]
 
 
 def joint_scores_decomposition(block_signal_bases):
