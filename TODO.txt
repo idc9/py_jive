@@ -1,3 +1,0 @@
-Refactor directory with cockiecutter
-https://github.com/audreyr/cookiecutter
-https://github.com/wdm0006/cookiecutter-pipproject
