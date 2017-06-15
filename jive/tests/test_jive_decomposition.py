@@ -22,12 +22,15 @@ class JiveDecomposition(unittest.TestCase):
 
         self.blocks = [self.X_obs, self.Y_obs]
         wedin_bound = True
+        full = True
         show_scree_plot = False
 
+
         # compute JIVE decomposition
-        jive = Jive(self.blocks, wedin_bound, show_scree_plot)
+        jive = Jive(self.blocks, wedin_bound, full, show_scree_plot)
         jive.set_signal_ranks([2, 3])
-        self.jive_estimates = jive.get_jive_estimates()
+        self.block_estimates = jive.get_block_estimates()
+        self.joint_space_estimate = jive.get_joint_space_estimate()
 
         self.K = len(self.blocks)
         self.dimensions = [self.blocks[k].shape[1] for k in range(self.K)]
@@ -41,9 +44,9 @@ class JiveDecomposition(unittest.TestCase):
         for k in range(self.K):
             X = self.blocks[k]
 
-            J = self.jive_estimates[k]["joint"]["full"]
-            I = self.jive_estimates[k]["individual"]["full"]
-            E = self.jive_estimates[k]["noise"]
+            J = self.block_estimates[k]["joint"]["full"]
+            I = self.block_estimates[k]["individual"]["full"]
+            E = self.block_estimates[k]["noise"]
 
             residual = X - (J + I + E)
             self.assertTrue(np.allclose(residual, 0))
@@ -53,7 +56,7 @@ class JiveDecomposition(unittest.TestCase):
         Check JIVE has the correct joint rank
         """
         # TODO: this might be a stochastic test -- maybe romeves
-        rank_estimate = self.jive_estimates[0]['joint']['rank']
+        rank_estimate = self.block_estimates[0]['joint']['rank']
 
         self.assertTrue(self.joint_rank == rank_estimate)
 
@@ -62,7 +65,7 @@ class JiveDecomposition(unittest.TestCase):
         Check JIVE has the correct individual rank
         """
         for k in range(self.K):
-            rank_estimate = self.jive_estimates[k]['individual']['rank']
+            rank_estimate = self.block_estimates[k]['individual']['rank']
             rank_true = self.individual_ranks[k]
 
             self.assertTrue(rank_true == rank_estimate)
@@ -72,10 +75,10 @@ class JiveDecomposition(unittest.TestCase):
         Check the SVD of the I matrix is correct
         """
         for k in range(self.K):
-            I = self.jive_estimates[k]["individual"]["full"]
-            U = self.jive_estimates[k]["individual"]["U"]
-            D = self.jive_estimates[k]["individual"]["D"]
-            V = self.jive_estimates[k]["individual"]["V"]
+            I = self.block_estimates[k]["individual"]["full"]
+            U = self.block_estimates[k]["individual"]["U"]
+            D = self.block_estimates[k]["individual"]["D"]
+            V = self.block_estimates[k]["individual"]["V"]
 
             # compare SVD reconstruction to I matrix
             svd_reconstruction = np.dot(U, np.dot(np.diag(D), V.T))
@@ -83,21 +86,41 @@ class JiveDecomposition(unittest.TestCase):
 
             self.assertTrue(np.allclose(residual, 0))
 
-    def test_joint_space_SVD(self):
+    def test_block_joint_space_SVD(self):
         """
         Check the SVD of the J matrix is correct
         """
         for k in range(self.K):
-            J = self.jive_estimates[k]["joint"]["full"]
-            U = self.jive_estimates[k]["joint"]["U"]
-            D = self.jive_estimates[k]["joint"]["D"]
-            V = self.jive_estimates[k]["joint"]["V"]
+            J = self.block_estimates[k]["joint"]["full"]
+            U = self.block_estimates[k]["joint"]["U"]
+            D = self.block_estimates[k]["joint"]["D"]
+            V = self.block_estimates[k]["joint"]["V"]
 
             # compare SVD reconstruction to I matrix
             svd_reconstruction = np.dot(U, np.dot(np.diag(D), V.T))
             residual = J - svd_reconstruction
 
             self.assertTrue(np.allclose(residual, 0))
+
+    def test_joint_space_svd(self):
+        """
+        Check the joint space.
+        """
+        # TODO: come up with more tests
+        U = self.joint_space_estimate['U']
+        D = self.joint_space_estimate['D']
+        V = self.joint_space_estimate['V']
+        rank = self.joint_space_estimate['rank']
+
+        # check shapes
+        self.assertTrue(U.shape[1] == rank)
+        self.assertTrue(V.shape[1] == rank)
+        self.assertTrue(len(D) == rank)
+
+        # make sure the joint ranks are consistent
+        self.assertTrue(self.block_estimates[0]["joint"]["rank"] ==
+                        self.joint_space_estimate['rank'])
+
 
 
 

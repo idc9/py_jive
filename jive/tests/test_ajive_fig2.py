@@ -16,6 +16,8 @@ class AjiveFig2(unittest.TestCase):
         """
         Sample data and compute JIVE estimates
         """
+        # TODO: think more about this number currently artibrary
+        self.rel_err_tolerance = .5
 
         # sample platonic data
         seed = 23423
@@ -25,33 +27,31 @@ class AjiveFig2(unittest.TestCase):
         blocks = [self.X_obs, self.Y_obs]
         wedin_bound = True
         show_scree_plot = False
+        full = True
 
         # compute JIVE decomposition
-        jive = Jive(blocks, wedin_bound, show_scree_plot)
+        jive = Jive(blocks, wedin_bound, full, show_scree_plot)
         jive.set_signal_ranks([2, 3])  # we know the true ranks
-        self.jive_estimates = jive.get_jive_estimates()
-
-        # TODO: think more about this number currently artibrary
-        self.rel_err_tolerance = .5
+        self.block_estimates = jive.get_block_estimates()
 
     def test_individual_rank_estimates(self):
         """
         Check that JIVE found the correct indivudal space rank estimate.
         """
-        x_indiv_rank_est = self.jive_estimates[0]["individual"]['rank']
-        y_indiv_rank_est = self.jive_estimates[1]["individual"]['rank']
+        x_indiv_rank_est = self.block_estimates[0]["individual"]['rank']
+        y_indiv_rank_est = self.block_estimates[1]["individual"]['rank']
 
         self.assertTrue(x_indiv_rank_est == 1)
         self.assertTrue(y_indiv_rank_est == 2)
 
     def test_joint_rank_estimates(self):
-        joint_rank_est = self.jive_estimates[0]["joint"]['rank']
+        joint_rank_est = self.block_estimates[0]["joint"]['rank']
         self.assertTrue(joint_rank_est == 1)
 
     def test_relative_error_x(self):
-        J_est = self.jive_estimates[0]["joint"]["full"]
-        I_est = self.jive_estimates[0]["individual"]["full"]
-        E_est = self.jive_estimates[0]["noise"]
+        J_est = self.block_estimates[0]["joint"]["full"]
+        I_est = self.block_estimates[0]["individual"]["full"]
+        E_est = self.block_estimates[0]["noise"]
 
         joint_rel_err = relative_error(self.X_joint, J_est)
         indiv_rel_err = relative_error(self.X_indiv, I_est)
@@ -62,9 +62,9 @@ class AjiveFig2(unittest.TestCase):
         self.assertTrue(noise_rel_err < self.rel_err_tolerance)
 
     def test_relative_error_y(self):
-        J_est = self.jive_estimates[1]["joint"]["full"]
-        I_est = self.jive_estimates[1]["individual"]["full"]
-        E_est = self.jive_estimates[1]["noise"]
+        J_est = self.block_estimates[1]["joint"]["full"]
+        I_est = self.block_estimates[1]["individual"]["full"]
+        E_est = self.block_estimates[1]["noise"]
 
         joint_rel_err = relative_error(self.Y_joint, J_est)
         indiv_rel_err = relative_error(self.Y_indiv, I_est)
