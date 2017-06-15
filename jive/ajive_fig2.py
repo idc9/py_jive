@@ -13,7 +13,6 @@ def generate_data_ajive_fig2(seed=None):
     X_obs, X_joint, X_indiv, X_noise, Y_obs, Y_joint, Y_indiv, Y_noise =
     generate_data_ajive_fig2()
     """
-
     if seed:
         np.random.seed(seed)
 

@@ -1,14 +1,23 @@
 import numpy as np
-from lin_alg_fun import *
+import matplotlib.pyplot as plt
+
+from lin_alg_fun import get_svd
+from jive_block import JiveBlock
 
 
 class Jive(object):
 
-    def __init__(self, blocks):
+    def __init__(self, blocks, wedin_estimate=True, show_scree_plot=True):
         """
         Paramters
         ---------
         Blocks is a list of data matrices
+
+        wedin_estimate: use the wedin bound to estimate the joint space
+        (True/False) if False then the user has to manually set the joint space
+        rank
+
+        show_scree_plot: show the scree plot of the initial SVD
         """
         self.K = len(blocks)  # number of blocks
 
@@ -17,10 +26,23 @@ class Jive(object):
         # initialize blocks
         self.blocks = []
         for k in range(self.K):
-            self.blocks.append(Block(blocks[k], 'block ' + str(k)))
+            self.blocks.append(JiveBlock(blocks[k], 'block ' + str(k)))
 
         # scree plot to decide on signal ranks
-        self.scree_plot()
+        if show_scree_plot:
+            self.scree_plot()
+
+        # options
+        self.wedin_estimate = wedin_estimate
+
+    def get_block_initial_singular_values(self):
+        """
+        Returns the singluar values for the initial SVD for each block.
+        """
+        # TODO: rename
+        # TODO: at some point we may delete the block singular values,
+        # do something intelligent at this point
+        return [self.blocks[k].D for k in range(self.K)]
 
     def scree_plot(self):
         """
@@ -39,15 +61,15 @@ class Jive(object):
         for k in range(self.K):
             self.blocks[k].set_signal_rank(signal_ranks[k])
 
-        # can now compute joint space then final decomposition
-        self.score_space_segmentation_and_final_decomposition()
+        # possibly estimate joint space
+        if self.wedin_estimate:
+            self.estimate_joint_space_wedin_bound()
 
-    def score_space_segmentation_and_final_decomposition(self):
+    def estimate_joint_space_wedin_bound(self):
         """
         Estimate joint score space and compute final decomposition
         - SVD on joint scores matrix
         - find joint rank using wedin bound threshold
-        - estimate J, I, E for each block
         """
 
         # wedin bound estimates
@@ -62,24 +84,63 @@ class Jive(object):
             joint_sv_bound = self.K - sum([b ** 2 for b in wedin_bounds])
 
         # SVD on joint scores matrx
-        joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
-        U_joint, D_joint, V_joint = get_svd(joint_scores_matrix)
+        self.joint_scores, self.joint_sv, self.joint_loadings = joint_scores_decomposition([self.blocks[k].
+                                                                signal_basis for
+                                                                k in range(self.K)])
 
         # estimate joint rank with wedin bound
         if self.K == 2:
-            principal_angles = np.array([np.arccos(d ** 2 - 1) for d in D_joint]) * (180.0/np.pi)
-            joint_rank = sum(principal_angles < phi_est)
+            principal_angles = np.array([np.arccos(d ** 2 - 1) for d in self.joint_sv]) * (180.0/np.pi)
+            self.joint_rank = sum(principal_angles < phi_est)
         else:
-            joint_rank = sum(D_joint ** 2 > joint_sv_bound)
+            self.joint_rank = sum(self.joint_sv ** 2 > joint_sv_bound)
 
         # select basis for joint space
-        joint_scores = U_joint[:, 0:joint_rank]
+        self.joint_scores = self.joint_scores[:, 0:self.joint_rank]
+        self.joint_loadings = self.joint_loadings[:, 0:self.joint_rank]
+        self.joint_sv = self.joint_sv[0:self.joint_rank]
+
+        # possibly remove columns
+        self.check_identifiability_constraint()
+
+        # can now compute final decomposotions
+        self.compute_final_decomposition()
+
+    def set_joint_rank(self, joint_rank):
+        """
+        Manualy set the joint space rank
+
+        Paramters
+        ---------
+        joint_rank: user selected rank of the estimated joint space
+        """
+
+        self.joint_rank = joint_rank
+
+        # TODO: this could be a K-SVD not a full SVD
+        self.joint_scores, self.joint_sv, self.joint_loadings = joint_scores_decomposition([self.blocks[k].
+                                                                signal_basis for
+                                                                k in range(self.K)])
+        # select basis for joint space
+        self.joint_scores = self.joint_scores[:, 0:self.joint_rank]
+        self.joint_loadings = self.joint_loadings[:, 0:self.joint_rank]
+        self.joint_sv = self.joint_sv[0:self.joint_rank]
+
+        # can now compute final decomposotions
+        self.compute_final_decomposition()
+
+    def check_identifiability_constraint(self):
+        """
+        Checks the identifability
+        """
+        # TODO: possibly make this a function outside the class
 
         # check identifiability constraint
-        to_keep = set(range(joint_rank))
+        to_keep = set(range(self.joint_rank))
         for k in range(self.K):
-            for j in range(joint_rank):
-                score = np.dot(self.blocks[k].X.T, joint_scores[:, j])
+            for j in range(self.joint_rank):
+                # This might be joint_sv
+                score = np.dot(self.blocks[k].X.T, self.joint_scores[:, j])
                 sv = np.linalg.norm(score)
 
                 # if sv is below the thrshold for any data block remove j
@@ -90,18 +151,19 @@ class Jive(object):
                     break
 
         # remove columns of joint_scores that don't satisfy the constraint
-        joint_scores = joint_scores[:, list(to_keep)]
-        joint_rank = len(to_keep)
-        self.joint_rank = joint_rank
+        self.joint_rank = len(to_keep)
+        self.joint_scores = self.joint_scores[:, list(to_keep)]
+        self.joint_loadings = self.joint_loadings[:, list(to_keep)]
+        self.joint_sv = self.joint_sv[list(to_keep)]
 
-        if joint_rank == 0:
+        if self.joint_rank == 0:
             # TODO: how to handle this situation?
             print 'warning all joint signals removed'
 
+    def compute_final_decomposition(self):
         # final decomposotion
-        joint_projection = projection_matrix(joint_scores)
         for k in range(self.K):
-            self.blocks[k].final_decomposition(joint_projection)
+            self.blocks[k].final_decomposition(self.joint_scores)
 
     def get_jive_estimates(self):
         """
@@ -112,216 +174,31 @@ class Jive(object):
         a list of block JIVE estimates i.e. estimates[k]['J'] gives the
         estimated J matrix for the kth block
         """
-        estimates = {}
+        estimates = [0] * self.K
         for k in range(self.K):
-            estimates[k] = {'J': self.blocks[k].J,
-                            'I': self.blocks[k].I,
-                            'E': self.blocks[k].E,
-                            'individual_rank': self.blocks[k].individual_rank}
+            # estimates[k] = {'J': self.blocks[k].J,
+            #                 'I': self.blocks[k].I,
+            #                 'E': self.blocks[k].E,
+            #                 'individual_rank': self.blocks[k].individual_rank}
 
-        estimates['joint_rank'] = self.joint_rank
+            estimates[k] = self.blocks[k].get_jive_estimates()
 
+        # estimates['joint_rank'] = self.joint_rank
         return estimates
 
 
-class Block(object):
-
-    def __init__(self, X, name=None):
-        """
-        Stores a single data block (rows as observations).
-
-        Paramters
-        ---------
-        X: a data block
-
-        name: the (optional) name of the block
-        """
-
-        self.name = name
-
-        self.X = X
-        self.n = X.shape[0]
-        self.d = X.shape[1]
-
-        # SVD for initial signal space extraction
-        self.U, self.D, self.V = get_svd(X)
-
-    def scree_plot(self):
-        if self.name:
-            title = self.name
-        else:
-            title = ''
-        scree_plot(self.D, 'X scree plot', diff=False, title=title)
-
-    def set_signal_rank(self, signal_rank):
-        """
-        The user sets the signal ranks for the data block. Then compute
-        - the singular value threshold
-        - the signal space basis
-        - the wedin bound
-        """
-        self.signal_rank = signal_rank
-
-        # compute singular value threshold
-        self.sv_threshold = get_sv_threshold(self.D, self.signal_rank)
-
-        # initial signal space estimate
-        self.signal_basis = self.U[:, 0:self.signal_rank]
-
-        # use resampling to compute wedin bound estimate
-        self.wedin_bound = get_wedin_bound(X=self.X,
-                                           U=self.U,
-                                           D=self.D,
-                                           V=self.V,
-                                           rank=self.signal_rank,
-                                           num_samples=1000)
-
-        # I think I can kill these now to save memory
-        # self.U = None
-        # self.V = None
-        # self.D = None
-
-    def final_decomposition(self, joint_projection):
-
-        self.J, self.I, self.E, self.individual_rank = block_JIVE_decomposition(X=self.X,
-                                                                                joint_projection=joint_projection,
-                                                                                sv_threshold=self.sv_threshold)
-
-
-def get_sv_threshold(singular_values, rank):
+def joint_scores_decomposition(block_signal_bases):
     """
-    Returns the singular value threshold value for rank R; half way between
-    the thresholding value and the next smallest.
+    Computes the SVD of the concatonated scores matrix to find the joint space.
 
     Paramters
     ---------
-    singular_values: list of singular values
-
-    rank: rank of the threshold
-    """
-    return .5 * (singular_values[rank - 1] + singular_values[rank])
-
-
-def resampled_wedin_bound(X, orthogonal_basis, rank,
-                          right_vectors, num_samples=1000):
-    """
-    Resampling procedure described in AJIVE paper for Wedin bound
-
-    Parameters
-    ---------
-    orthogonal_basis: basis vectors for the orthogonal complement
-    of the score space
-
-    X: the observed data
-
-    rank: number of columns to resample
-
-    right_vectors: multiply right or left of data matrix (True/False)
-
-    num_samples: how many resamples
+    signal_bases: list of bases for each block signal spaces (i.e. the Us from
+    the initial block SVD)
 
     Output
     ------
-    an array of the resampled norms
+    U_joint, D_joint, V_joint
     """
-
-    rs_norms = [0]*num_samples
-
-    for s in range(num_samples):
-
-        # sample columns from orthogonal basis
-        sampled_col_index = np.random.choice(orthogonal_basis.shape[1], size=rank, replace=True)
-        resampled_basis = orthogonal_basis[:, sampled_col_index]  # this is V* from AJIVE p12
-
-        # project observed data
-        if right_vectors:
-            resampled_projection = np.dot(X, resampled_basis)
-        else:
-            resampled_projection = np.dot(X.T, resampled_basis)
-
-        # compute resampled operator L2 nrm
-        rs_norms[s] = np.linalg.norm(resampled_projection, ord=2)  # operator L2 norm
-
-    return rs_norms
-
-
-def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
-    """
-    Computes the wedin bound using the resampling procedure described in
-    the AJIVE paper.
-
-    Parameters
-    ----------
-    X: the data block
-    U, D, V: the SVD of X
-    rank: the rank of the signal space
-    num_samples: number of saples for resampling procedure
-    """
-
-    # resample for U and V
-    U_sampled_norms = resampled_wedin_bound(X=X,
-                                            orthogonal_basis=U[:, rank:],
-                                            rank=rank,
-                                            right_vectors=False,
-                                            num_samples=num_samples)
-
-    V_sampled_norms = resampled_wedin_bound(X=X,
-                                            orthogonal_basis=V[:, rank:],
-                                            rank=rank,
-                                            right_vectors=True,
-                                            num_samples=num_samples)
-
-    # compute upper bound
-    # maybe this way??
-    # EV_estimate = np.median(V_sampled_norms)
-    # UE_estimate = np.median(U_sampled_norms)
-    # wedin_bound_est = max(EV_estimate, UE_estimate)/sigma_min
-    sigma_min = D[:rank]
-    wedin_bound_samples = [max(U_sampled_norms[s], V_sampled_norms[s])/sigma_min for s in range(num_samples)]
-    wedin_bound_est = np.median(wedin_bound_samples)
-
-    return wedin_bound_est
-
-
-def block_JIVE_decomposition(X, joint_projection, sv_threshold):
-    """
-    Computes the JIVE decomposition for an individual data block
-
-    Parameters
-    ----------
-    X: observed data matrix
-
-    joint_projection: projection matrix onto joint score space
-
-    sv_threshold: singular value threshold
-
-    Output
-    ------
-    J, I, E, individual_rank
-    J: estimated joint signal matrix
-    I: estimated indiviual signal
-    E: esimated error matrix
-    individual_rank: rank of the esimated individual space
-    """
-
-    # compute orthogonal projection matrix
-    joint_projection_ortho = np.eye(X.shape[0]) - joint_projection
-
-    # estimate joint spaces
-    J = np.dot(joint_projection, X)
-
-    # SVD of orthogonal projection
-    X_ortho = np.dot(joint_projection_ortho, X)
-    U_xo, D_xo, V_xo = get_svd(X_ortho)
-
-    # threshold singular values of orthogonal matrix
-    individual_rank = sum(D_xo > sv_threshold)
-
-    # estimate individual space
-    I = svd_approx(U_xo, D_xo, V_xo, individual_rank)
-
-    # estimate noise
-    E = X - (J + I)
-
-    # return {'J': J, 'I': I, 'E': E, 'individual_rank': individual_rank}
-    return J, I, E, individual_rank
+    joint_scores_matrix = np.bmat(block_signal_bases)
+    return get_svd(joint_scores_matrix)
