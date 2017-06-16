@@ -121,7 +121,7 @@ class JiveDecomposition(unittest.TestCase):
         self.assertTrue(self.block_estimates[0]["joint"]["rank"] ==
                         self.joint_space_estimate['rank'])
 
-
+        # TODO: compare joint space reconstruction to something
 
 
 if __name__ == '__main__':
