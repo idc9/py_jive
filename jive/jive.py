@@ -22,7 +22,6 @@ class Jive(object):
 
         show_scree_plot: show the scree plot of the initial SVD
         """
-        print full
         self.K = len(blocks)  # number of blocks
 
         self.n = blocks[0].shape[0]  # number of observation
@@ -225,6 +224,7 @@ class Jive(object):
         ------
         a list of the full block estimates (I, J, E) i.e. estimates[k]['J']
         """
+        # TODO: give the option to return only some of I, J and E
         return [self.blocks[k].get_full_jive_estimates()
                 for k in range(self.K)]
 
