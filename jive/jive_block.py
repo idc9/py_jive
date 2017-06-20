@@ -76,8 +76,10 @@ class JiveBlock(object):
         joint_scores: joint scors matrix
         """
         self.estimate_joint_space(joint_scores)
+        
         self.estimate_individual_space(joint_scores)
 
+        # save ranks
         self.individual_rank = len(self.block_individual_sv)
         self.joint_rank = joint_scores.shape[1]  # not necessary to save
 
@@ -173,7 +175,7 @@ def get_sv_threshold(singular_values, rank):
 
 def get_block_joint_space(X, joint_scores, full=True):
     """"
-    Finds a block's joint space representation and the SVD of this space
+    Finds a block's joint space representation and the SVD of this space.
 
     Paramters
     ---------
