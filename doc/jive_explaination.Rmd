@@ -39,7 +39,11 @@ The matrices satisfy the following constraints:
 3. The columns of the joint matrices share a common space called the joint score space (a subspace of $\mathbb{R}^n$); in particular the $\text{col-span}(J^{(1)}) = \dots = \text{col-span}(J^{(K)})$ (hence the name joint).
 4. Each individual spaces score subspace (of $\mathbb{R}^n$) is orthogonal to the the joint space; in particular $\text{col-span}(J^{(k)}) \perp \text{col-span}(I^{(k)})$ for $k=1, \dots, K$.
 
-The quantities of interest may be the full matrices $J^{(k)}$ and $I^{(k)}$. By construction these matrices are not full rank and we may also be interested in their singular value decomposition which we define as
+Note that JIVE may be more natural if we think about data matrices subspaces of $\mathbb{R}^n$ (the score space perspective). Typically we think of a data matrix as $n$ points in $\mathbb{R}^d$. The score space perspective views a data matrix as $d$ vectors in $\mathbb{R}^n$ (or rather the span of these vectors). One important consequence of this perspective is that it makes sense to related the data blocks in score space (e.g. as subspaces of $\mathbb{R}^n$) since they share observtions.
+
+## Quantities of interest
+
+There are a number of potential quantities of interest depending on the application. For example the user may be interested in the full matrices $J^{(k)}$ and/or $I^{(k)}$. By construction these matrices are not full rank and we may also be interested in their singular value decomposition which we define as
 
 \begin{align}
 & U^{(k)}_{joint}, D^{(k)}_{joint}, V^{(k)}_{joint} = \text{rank } r_{joint} \text{ SVD of } J^{(k)} \\
@@ -82,7 +86,7 @@ There are many ways to use a PCA/SVD decomposition. Some common quantities of in
 - The full signal approximation: $A \in \mathbb{R}^{n \times d}$
 
 
-## Scores and loadings
+# **Scores and loadings**
 
 For both PCA and JIVE we use the notation $U$ (scores) and $V$ (loadings). These show up in several places.
 
@@ -98,7 +102,7 @@ An alternative geometric perspective is the $r$ columns of the scores matrix are
 
 The first perspective says PCA finds a lower dimensional approximation to a subspace in $\mathbb{R}^d$ (spanned by the $n$ data points). The second perspective says PCA finds a lower dimensional approximation to a subspace in $\mathbb{R}^n$ (spanned by the $d$ data points).
 
-# **JIVE operating in score space**
+## JIVE operating in score space
 
 For a data matrix $X$ let's call the span of the variables (columns) the *score subpace*, $\text{col-span}(X) \subset \mathbb{R}^n$. Typically we think of a data matrix as $n$ points in $\mathbb{R}^d$. The score space perspective reverses this and says a data matrix is $d$ points in $\mathbb{R}^n$. When thinking in the score space it's common to consider about subspaces i.e. the span of the $d$ variables in $\mathbb{R}^n$. In other words, if two data matrices have the same column span then their score subspaces are the same^[This might remind the reader of TODO].
 
