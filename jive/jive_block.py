@@ -23,11 +23,19 @@ class JiveBlock(object):
         self.n = X.shape[0]
         self.d = X.shape[1]
 
-        # SVD for initial signal space extraction
-        self.U, self.D, self.V = get_svd(X)
-
         self.name = name
+        
+        # Options
         self.full = full
+        
+        # Compute initial SVD
+        self.initial_svd()
+
+    def initial_svd(self):
+        """
+        SVD for initial signal space extraction
+        """
+        self.U, self.D, self.V = get_svd(X)
 
     def scree_plot(self):
         """
