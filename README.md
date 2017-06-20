@@ -39,6 +39,6 @@ block_estimates = jive.get_block_estimates()
 plot_jive_full_estimates(jive)
 ```
 
-For some more example code demonstrting some of the basic functionality see [this notebook](doc/jive_demo.html). TODO: make this link render.
+For some more example code demonstrting some of the basic functionality see [this notebook](doc/jive_demo.ipynb). TODO: make this link render.
 
 TODO: add more example code including worked through data analyses.
