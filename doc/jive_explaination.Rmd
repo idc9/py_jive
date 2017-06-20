@@ -109,6 +109,5 @@ PCA partitions the score space into two subspaces: signal and noise (see above).
 
 
 
-
 <!-- $:= \text{col-span}(J)$ (where $J \in \mathbb{R}^{n \times r_{joint}}$ is a basis for the joint score subspace) -->
 

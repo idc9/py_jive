@@ -1,6 +1,6 @@
 # Angle-Based Joint and Individual Variation Explained
 
-Python implementation of the [Angle-Based Joint and Individual Variation Explained](https://arxiv.org/pdf/1704.02060.pdf) (JIVE) algorithm. For an introduction to JIVE see [this page](/doc/jive_explaination.html).
+Python implementation of the [Angle-Based Joint and Individual Variation Explained](https://arxiv.org/pdf/1704.02060.pdf) (JIVE) algorithm. For an introduction to JIVE see [this page](/doc/jive_explaination.ipynb).
 
 TODO: 
 
