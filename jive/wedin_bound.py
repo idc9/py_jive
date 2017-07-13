@@ -32,7 +32,7 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
     # EV_estimate = np.median(V_sampled_norms)
     # UE_estimate = np.median(U_sampled_norms)
     # wedin_bound_est = max(EV_estimate, UE_estimate)/sigma_min
-    sigma_min = D[:rank]
+    sigma_min = D[rank - 1]  # TODO: double check -1
     wedin_bound_samples = [max(U_sampled_norms[s], V_sampled_norms[s])/sigma_min for s in range(num_samples)]
     wedin_bound_est = np.median(wedin_bound_samples)
 

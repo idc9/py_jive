@@ -1,0 +1,120 @@
+---
+title: "**AJIVE computation**"
+output:
+  html_document:
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+---
+
+Suppose we have $K$ data data matrices (blocks) with the same number of observations, but possibly different numbers of variables; in particular we have $X^{(1)}, \dots, X^{(K)}$ where $X^{(k)} \in \mathbb{R}^{n \times d_k}$. Our goal is to compute the JIVE decomposition ($X^{(k)} = J^{(k)} + I^{(k)} + E^{(k)}$) for each data block (see TODO for discussion about the JIVE decomposition). 
+
+
+## Observation space perspective
+
+The traditional geometric perspective of a data matrix with $n$ observations and $d$ variables is to think of **n points in $\mathbf{\mathbb{R}^d}$**; each observation (row) of $X$ is a single vector in $\mathbb{R}^d$ and there are $n$ of these points. The *observation space* perspective is that a data matrix is **d points in $\mathbf{\mathbb{R}^n}$**; each variable (column) of $X$ is a single vector in $\mathbb{R}^n$ and there are $d$ of these vectors. Often we will consider the span of the variables in $\mathbb{R}^n$.
+
+The observation space perspective is useful for JIVE since it allows us to directly relate the different data matrices. For example, consider the span of each of the $K$ data blocks (i.e. $K$ subspaces of $\mathbb{R}^n$ with dimensions $d_1, \dots, d_k$). It then may be tempting to take the intersection of these $K$ subspaces and call this the joint space. While this is on the right track, due to the presence of noise we need a slightly more sophistocated procedure.
+
+
+# **Computing the AJIVE decomposition**
+
+The AJIVE decomposition happens in three steps. Each step involves estimating one or more subspaces of $\mathbb{R}^n$ (hence the value in the observation space perspective). In practice a $d$ dimensional subspace of $\mathbb{R}^n$ is represented by a matrix $U \in \mathbb{R}^{n \times d}$ whose columns give an orthonormal basis of the subspace.
+
+### Step 1: **Initial Signal Space Extraction**
+
+We assume that each data matrix is equal to a low rank matrix (whose span we call the signal space) and an isotropic noise matrix. For each of the $K$ data matrices we compute a rank $r_{initial}^{(k)}$^[Intuition suggests that $r^{(k)}_{initial} = r_{joint} + r^{(k)}_{individual}$ however this may not happen because of the rank estimating procedures. Hence we use the word "initial" signal subspace.]  PCA approximation of $X^{(k)}$. The selection of $r^{(k)}_{initial}$ is currently done with visual inspection of the scree plots, however, other procedures are possible. This step results in an initial estimate of the signal subspace.
+
+In particular we compute for $k = 1, \dots, K$
+
+$$
+U^{(k)}, D^{(k)}, V^{(k)} = SVD(X^{(k)}_{centered}).
+$$
+After deciding on $r_{initial}^{(k)}$ (for example by using the scree plot) we let
+$$\widetilde{U}^{(k)} = U^{(k)}[:, 1:r_{initial}^{(k)}].$$
+Note that $\widetilde{U}^{(k)}\in \mathbb{R}^{n \times r_{initial}^{(k)}}$ is an orthonormal basis of the initial signal space estiate for the k$th$ data matrix. TODO: say something about the SV threshold
+
+
+<!--
+For each of the $K$ data matrices we estimate an initial signal subspace^[Intuition suggests that $r^{(k)}_{initial} = r_{joint} + r^{(k)}_{individual}$ however this may not happen because of the rank estimating procedures. Hence we use the word "initial" signal subspace.] of rank $r_{initial}^{(k)} \le d_k$ sitting inside $\mathbb{R}^n$. This subspace estimate is accomplished with a rank $r_{initial}^{(k)}$ PCA approximation of $X^{(k)}$. The selection of $r^{(k)}_{initial}$ is currently done with visual inspection of the scree plots, however, other procedures are possible
+
+
+**Resulting data**: For each of the $K$ blocks we get an orthonomal basis of the signal subspace estimate called $\widetilde{U}^{(k)} \in \mathbb{R}^{n \times r_{initial}^{(k)}}$. 
+-->
+
+### Step 2: **Joint Space Estimation**
+
+The goal of this section is to find a subspace that is common to all $K$ data blocks. For each of the $K$ data blocks we assume the joint space has been perterbed by some noise; the resulting subspaces do not exactly overlap, however, the priniciapl angles between them should be small.
+
+The first step is to decide on the rank of the joint subspace (called $r_{joint}$). This rank may either by set by the user or estimated using the *Wedin bound* procedure described TODO.
+
+
+Given the $K$ initial signal subspace estimates (from step 1) and $r_{joint}$ we can now compute the joint subspace.  This is accomplished using information from the SVD of the concatenated signal space matrices
+$$M = [\widetilde{U}^{(1)}, \dots, \widetilde{U}^{(K)}].$$
+This SVD sorts the directions within these K subspaces in increasing order of amount of deviation from the theoretical joint direction (TODO: this is a direct quote). In the case of $K=2$ this procedure is equivalent to sorting the two sets of basis vectors by the principal angles.
+
+In particular we compute
+$$
+U, D, V = SVD(M)
+$$
+We then keep the first $r_{joint}$ columns of $U$ i.e.
+$$
+U_{joint} = U_{:, 1:r_{joint}}
+$$
+We now have an orthonormal basis of the joint space called $U_{joint} \in \mathbb{R}^{n \times r_{joint}}$.
+
+### Step 3: **Final Decompositin**
+
+The goal of this section is to compute the JIVE decomposition ($X = J +I + E$) for each data block given the joint subspace computed above. By assumption the k$th$ signal subspace is equal to the disjoint^[We use the word "disjoint" because the two subspaces are orthogonal.] union of the joint subspace and the k$th$ individual subspace. We have the joint subspace so we now only need to estimate the individual subspaces.
+
+For each of the $K$ data blocks
+
+- Project the data matrix $X^{(k)}$ onto the orthogonal complement of $U_{joint}$. In particular let $X^{(k), \perp} = (I - U_{joint}U_{joint}^T)X^{(k)}$ (the term on the left is a projection matrix).
+
+- Estimate the rank of the individual subspace $r^{(k)}_{individual}$. This done using the singular values of the initial SVD (discussed below TODO link). Optionally the user may manually select $r^{(k)}_{individual}$.
+
+- The $I^{(k)}$ matrix is then the rank $r^{(k)}_{individual}$ SVD approximation of $X^{(k), \perp}$.
+
+    
+At this point we are essentially done with the JIVE decomposition since we have (a basis for) the joint and $K$ individual subspaces. We can compute the $J^{(k)}$ matrices explicitly by projecting $X^{(k)}$ onto $U_{joint}$. The error matrices are then given by $E^{(k)} := X^{(k)} - (I^{(k)} + J^{(k)})$.
+
+<!--
+**Resulting data**: For each block we now have estimates for the $J^{(k)}$, $I^{(k)}$ and $E^{(k)}$ matrices as well as their singular value decomposition (the left singular vectors of these SVDs give a basis for the given subspace).
+
+-->
+
+
+## Estimating the joint rank with the Wedin bound
+
+## Estimating the individual ranks
+
+
+
+<!--
+
+# Step 1: Initial signal space extraction
+
+The first step is to get the initial estimate of the signal subspace (of $\mathbb{R}^n$) for each data block^[We say "initial estimate" because it's possible the estimate of the signal space will change at a later JIVE step -- see TOTO]. This is accomplished by computing the PCA decomposition for each data block
+
+$$
+\text{for }k= 1, \dots, K \\
+U^{(k)}, D^{(k)}, V^{(k)} = SVD(X^{(k)}_{centered})
+$$
+For each data block we need to estimate the initial signal rank. This can be accomplished by viusal inspection of a scree block e.g. [TODO: image of a scree plot].
+
+Let's call the initial signal rank estimate for each block $r_{initial}^{(k)}$ and let 
+$$\widetilde{U}^{(k)} = U^{(k)}[:, 1:r_{initial}^{(k)}].$$
+
+Note that each $\widetilde{U}^{(k)}$ is a basis for the signal space of the kth block. Furthermore  we that we will save the first $r_{initial}^{(k)}$ singular values of each block for later use (see TODO).
+
+# Step two: joint space extraction
+
+Once we have the initial signal space for each data block we can find the joint space. Note "finding the joint space" means finding an orthonormal basis the joint space (which is a subspace of $\mathbb{R}^n$). Now define a matrix $M$ by the horizontal contatonation of the  $\widetilde{U}^{(k)}$ i.e.
+
+$$M = [\widetilde{U}^{(1)}, \dots, \widetilde{U}^{(K)}] \in \mathbb{R}^{n \times R}$$
+where $R = \sum_{k=1}^K r_{initial}^{(k)}$.
+
+-->
+
+
+

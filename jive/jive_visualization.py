@@ -30,7 +30,7 @@ def plot_jive_full_estimates(jive):
     for k in range(num_blocks):
 
         # grab data
-        X = jive.blocks[0].X
+        X = jive.blocks[k].X
         J = full_block_estimates[k]['J']
         I = full_block_estimates[k]['I']
         E = full_block_estimates[k]['E']

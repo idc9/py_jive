@@ -9,109 +9,122 @@ output:
 
 
 
-JIVE (Joint and Individual Variation Explained) is a dimensional reduction algorithm that can be used when there are multiple data matrices (data blocks). The multiple data block setting means there are $K$ different data matrices, with the same number of observations $n$ and (possibly) different numbers of variables ($d_1, \dots, d_k$). JIVE finds modes of variation which are common (joint) to all $K$ data blocks and modes of individual variation which are specific to each block. For a detailed discussion of JIVE see [Angle-Based Joint and Individual Variation Explained](https://arxiv.org/pdf/1704.02060.pdf).^[Note this paper calls the algorithm AJIVE (angle based JIVE) however, we simply use JIVE. Additionally, the paper uses columns as observations in data matrices where as we use rows as observations.]
+JIVE (Joint and Individual Variation Explained) is a dimensionality reduction algorithm that can be used when there are multiple data matrices (data blocks). The multiple data block setting means there are $K$ different data matrices, with the same set of observations and (possibly) different numbers of variables. **JIVE finds *joint* modes of variation which are common to all $K$ data blocks as well as modes of *individual* variation which are specific to each block.** For a detailed discussion of JIVE see [Angle-Based Joint and Individual Variation Explained](https://arxiv.org/pdf/1704.02060.pdf).^[Note this paper calls the algorithm AJIVE (angle based JIVE) however, we simply use JIVE. Additionally, the paper uses columns as observations in data matrices whereas we use rows as observations.]
 
-For a concrete example, consider a two block example from a medical study. Suppose there are $n=500$ patients (observations). For each patient we have $d_1 = 100$ bio-medical variables (e.g. hit, weight, etc). Additionally we have $d_2 = 10,000$ gene expression measurements for each patient.
+For a concrete example, consider a toy two block example from a medical study. Suppose there are $n=500$ patients (observations). For each patient we have $d_1 = 100$ clinical variables (e.g. height, weight, etc). Additionally we have $d_2 = 10,000$ gene expression measurements for each patient. We expect there are modes of variation that are common to the two data blocks (e.g. height is related to genetics) as well as unrelated modes within the data blocks.
 
 <!--
-For a concrete example, consider the folowing 4 block example from Ciriello et al (2015). We have 616 breast cancer tumor samples (observations).  For each tumor sample, there are measurements of 16615 gene expression features (block 1), 24174 copy number variations features (block 2), 187 reverse phase protein array features (block 3) and 18256 mutation features (block 4). The four blocks have dimensions $X^{(1)} \in \mathbb{R}^{616 \times 16615}$, $X^{(2)} \in \mathbb{R}^{616 \times 24174}$, $X^{(3)} \in \mathbb{R}^{616 \times 187}$, $X^{(4)} \in \mathbb{R}^{616 \times 18256}$.
+For a concrete example, consider the following 4 block example from Ciriello et al (2015). We have 616 breast cancer tumor samples (observations).  For each tumor sample, there are measurements of 16615 gene expression features (block 1), 24174 copy number variations features (block 2), 187 reverse phase protein array features (block 3) and 18256 mutation features (block 4). The four blocks have dimensions $X^{(1)} \in \mathbb{R}^{616 \times 16615}$, $X^{(2)} \in \mathbb{R}^{616 \times 24174}$, $X^{(3)} \in \mathbb{R}^{616 \times 187}$, $X^{(4)} \in \mathbb{R}^{616 \times 18256}$.
 
-Related algorithms include Priniciapl Component Analysis (PCA), Cannonical Correlation Analysis (CCA), and multiple block factor analysis (Abdi et al. 2013). PCA works on a single block (ignores interations). Standard CCA only works only on $K=2$ blocks and finds only directions of common variation. Many existing multi block methods are sensitive to scale heterogeniety between different blocks. See the [AJIVE](https://arxiv.org/pdf/1704.02060.pdf) paper for a discussion of comparisons between JIVE and other multi-block methods.
+Related algorithms include Principal Component Analysis (PCA), Canonical Correlation Analysis (CCA), and multiple block factor analysis (Abdi et al. 2013). PCA works on a single block (ignores interactions). Standard CCA only works only on $K=2$ blocks and finds only directions of common variation. Many existing multi block methods are sensitive to scale heterogeneity between different blocks. See the [AJIVE](https://arxiv.org/pdf/1704.02060.pdf) paper for a discussion of comparisons between JIVE and other multi-block methods.
 
 -->
 
 
 # **The JIVE decomposition**
 
-Suppose we have $K$ data data matrices (blocks) with the same number of observations, but possibly different numbers of variables; in particular let $X^{(1)}, \dots, X^{(K)}$ where $X^{(k)} \in \mathbb{R}^{n \times d_k}$. JIVE will then decompose each matrix into three components: joint signal, individual signal and noise
+Suppose we have $K$ data data matrices (blocks) with the same observations, but possibly different numbers of variables; in particular we have $X^{(1)}, \dots, X^{(K)}$ where $X^{(k)} \in \mathbb{R}^{n \times d_k}$ (e.g. $X^{(k)}$ has $n$ observations (the rows) and $d_k$ variables (the columns))^[Note in the original AJIVE paper columns are data objects i.e. everything is transposed.]. JIVE will then decompose each matrix into three components: joint signal, individual signal and noise
 
 \begin{equation}
 X^{(k)} = J^{(k)} + I^{(k)} + E^{(k)}
 \end{equation}
 
-where $J^{(k)}$ is the joint signal estimate, $I^{(k)}$ is the individual signal estimate and $E^{(k)}$ is the noise estimate (each of these matrices must the same shape as the original data block: $\mathbb{R}^{n \times d_k}$). Note: **we assume each data matrix** $X^{(k)}$ **has been column mean centered**.
+where $J^{(k)}$ is the joint signal estimate, $I^{(k)}$ is the individual signal estimate and $E^{(k)}$ is the noise (each of these matrices must the same shape as the original data block: $\mathbb{R}^{n \times d_k}$). Note: we assume the columns of each data matrix $X^{(k)}$ have been mean centered.
+
+The goal of JIVE is to find matrices which have the following structure:
+
+1. The joint matrices have a common rank: $rank(J^{(k)}) = r_{joint}$ for each $k$.
+2. The columns of the joint matrices share a common space called the joint score space (a subspace of $\mathbb{R}^n$); in particular the $\text{col-span}(J^{(1)}) = \dots = \text{col-span}(J^{(K)})$ (hence the name joint).
+3. The individual matrices have block specific ranks $rank(I^{(k)}) = r_{individual}^{(k)}$ for each $k$.
+4. Each individual score subspace (of $\mathbb{R}^n$) is orthogonal to the the joint space; in particular $\text{col-span}(J^{(k)}) \perp \text{col-span}(I^{(k)})$ for each $k$. 
+5. For identifiability we further require the individual spaces to have a trivial intersection i.e. $\cap_{k} \text{col-span}(I^{(k)}) = \emptyset$.
 
 
-The matrices satisfy the following constraints:
+The ranks can either be estimated^[Under weak statistical assumptions (isotropic error) the ranks can be estimated -- for details see the [AJIVE](https://arxiv.org/pdf/1704.02060.pdf) paper.] or manually set by the user.  
 
-1. The joint matrices have a common rank: $rk(J^{(k)}) = r_{joint}$ for $k=1, \dots, K$.
-2. The individual matrices have block specific ranks $rk(I^{(k)}) = r_{individual}^{(k)}$.
-3. The columns of the joint matrices share a common space called the joint score space (a subspace of $\mathbb{R}^n$); in particular the $\text{col-span}(J^{(1)}) = \dots = \text{col-span}(J^{(K)})$ (hence the name joint).
-4. Each individual spaces score subspace (of $\mathbb{R}^n$) is orthogonal to the the joint space; in particular $\text{col-span}(J^{(k)}) \perp \text{col-span}(I^{(k)})$ for $k=1, \dots, K$.
+Note that JIVE may be more natural if we think about data matrices as subspaces of $\mathbb{R}^n$ (the observation space perspective^[This is also called "score space" or "person space".]). Typically we think of a data matrix as $n$ points in $\mathbb{R}^d$. The score space perspective views a data matrix as $d$ vectors in $\mathbb{R}^n$. One important consequence of this perspective is that it makes sense to relate the data blocks in observation space (e.g. as subspaces of $\mathbb{R}^n$) since they share observations.
 
-Note that JIVE may be more natural if we think about data matrices subspaces of $\mathbb{R}^n$ (the score space perspective). Typically we think of a data matrix as $n$ points in $\mathbb{R}^d$. The score space perspective views a data matrix as $d$ vectors in $\mathbb{R}^n$ (or rather the span of these vectors). One important consequence of this perspective is that it makes sense to related the data blocks in score space (e.g. as subspaces of $\mathbb{R}^n$) since they share observtions.
+**The goal of JIVE is to find $K + 1$ subspaces of $\mathbb{R}^n$**: the one joint subspace ($\text{col-span}(J^{(1)})$) and the $K$ individual subspaces ($\text{col-span}(I^{(k)})$). These subspaces have the properties described above in 1-5.
+
+<!--TODO: change signal space to observation space -->
 
 ## Quantities of interest
 
 There are a number of potential quantities of interest depending on the application. For example the user may be interested in the full matrices $J^{(k)}$ and/or $I^{(k)}$. By construction these matrices are not full rank and we may also be interested in their singular value decomposition which we define as
 
 \begin{align}
-& U^{(k)}_{joint}, D^{(k)}_{joint}, V^{(k)}_{joint} = \text{rank } r_{joint} \text{ SVD of } J^{(k)} \\
+& U^{(k)}_{joint}, D^{(k)}_{joint}, V^{(k)}_{joint} := \text{rank } r_{joint} \text{ SVD of } J^{(k)} \\
 
-& U^{(k)}_{individual}, D^{(k)}_{individual}, V^{(k)}_{individual} = \text{rank } r_{individual}^{{k}} \text{ SVD of } I^{(k)}
+& U^{(k)}_{individual}, D^{(k)}_{individual}, V^{(k)}_{individual} := \text{rank } r_{individual}^{{k}} \text{ SVD of } I^{(k)}
 \end{align}
 
-One additional quantity of interest is $U_{joint} \in \mathbb{R}^{n \times r_{joint}}$ which is an orthogonal basis of $\text{col-span}(J^{(k)})$. This matrix is produced from an intermediate JIVE computation. 
+One additional quantity of interest is $U_{joint} \in \mathbb{R}^{n \times r_{joint}}$ which is an orthogonal basis of $\text{col-span}(J^{(k)})$ called the *common normalized scores*. This matrix captures the joint signal among all variables and is produced from an intermediate JIVE computation.^[It may be tempting to concatenate all the $U^{(k)}_{joint}$ however this is **not** the same as using $U_{joint}$.]
+
+For example, if the user is interested in the joint signal then they may represent the data by the $U_{joint} \in \mathbb{R}^{n \times r_{joint}}$ matrix. This represents the data with $r_{joint}$ latent variables that capture the joint signal across all data blocks. Similarly if the user is interested in the individual signal in the first data block the user may look at $U^{(1)}_{individual} \in \mathbb{R}^{n \times d_1}$ (or $U^{(1)}_{individual}D^{(1)}_{individual}$).
+
+Instead of discussing JIVE further we turn briefly to PCA. 
 
 # **PCA analogy**
-We give a brief discussion of the PCA/SVD decomposition (assuming the reading is already familiar).
+JIVE has many analogous quantities to PCA therefore the reader's understanding of PCA should inform understanding JIVE. We give a brief discussion of the PCA/SVD decomposition (assuming the reader is already familiar). 
 
 ## Basic decomposition
-Suppose we have a data matrix $X \in \mathbb{n \times d}$. Assume that $X$ has been column mean centered and consider the SVD decomposition (this is PCA since we have mean centered the data):
+Suppose we have a data matrix $X \in \mathbb{R}^{n \times d}$. Assume that each column of $X$ has been mean centered and consider the SVD decomposition (recall PCA is SVD on mean centered data):
 
 \begin{equation}
 X = U D V^T.
 \end{equation}
-where $U \in \mathbb{R}^{n \times m}$, $D \in \mathbb{R}^{m \times m}$ is diagonal, and $V \in \mathbb{R}^{d \times m}$ with $m = min(n, d)$. Note $U^TU = V^TV = I_{m \times m}$. 
+where $m = min(n, d)$ and $U \in \mathbb{R}^{n \times m}$, $D \in \mathbb{R}^{m \times m}$ is diagonal, and $V \in \mathbb{R}^{d \times m}$. Note $U^TU = V^TV = I_{m \times m}$. 
 
 Suppose we have decided to use a rank $r$ approximation. We can then decompose $X$ into a signal matrix ($A$) and an noise matrix ($E$)
 
 \begin{equation}
 X = A + E,
 \end{equation}
-where $A$ is the rank $r$ SVD approximation of $X$ i.e. 
+where $A$ is the rank $r$ SVD approximation of $X$. 
+
+TODO: reorder to make more clear
 \begin{align}
 A := & U_{:, 1:r} D_{1:r, 1:r} V_{:, 1:r}^T \\
- = & \widetilde{U}, \widetilde{D} \widetilde{V}^T
+ := & \widetilde{U} \widetilde{D} \widetilde{V}^T
 \end{align}
-The notation $U_{:, 1:r} \in \mathbb{R}^{n \times r}$ means the first $r$ columns of $U$. Similarly we can see the error matrix is $E :=U_{:, r+1:n} D_{r+1:m, r_1:m} V_{:, r+1:d}^T$.
+The notation $U_{:, 1:r} \in \mathbb{R}^{n \times r}$ means the first $r$ columns of $U$. Similarly we can see the error matrix is $E :=U_{:, r+1:n} D_{r+1:m, r+1:m} V_{:, r+1:d}^T$. In other words $\widetilde{U}, \widetilde{D}, \widetilde{V}$ are the rank $r$ SVD of $X$.
 
 ## Quantities of interest
 
-There are many ways to use a PCA/SVD decomposition. Some common quantities of interest include
+There are many potentially desirable outputs of a PCA/SVD decomposition. Some common quantities of interest include
 
-- The normalized scores: $\widetilde{U} \in \mathbb{R}^{n \times r}$
-- The unnormalized scores: $\widetilde{U}\widetilde{D} \in \mathbb{R}^{n \times r}$
+- The normalized (i.e. scale free) scores: $\widetilde{U} \in \mathbb{R}^{n \times r}$
+- The unnormalized (original scale) scores: $\widetilde{U}\widetilde{D} \in \mathbb{R}^{n \times r}$
 - The loadings: $\widetilde{V} \in \mathbb{R}^{d \times r}$
 - The full signal approximation: $A \in \mathbb{R}^{n \times d}$
+
+
+Note that for the JIVE decomposition using the $I$ or $J$ matrix is like using the $A$ matrix for PCA. Similarly $U^{(k)}_{individual}$/$U^{(k)}_{joint}$/$U_{joint}$ for JIVE and $\widetilde{U}$ for PCA. For PCA it is more common to use $U$ (or $UD$) than $A$.
 
 
 # **Scores and loadings**
 
 For both PCA and JIVE we use the notation $U$ (scores) and $V$ (loadings). These show up in several places.
 
-We refer to all $U \in \mathbb{R}^{n \times r}$ matrices as scores. We can view the $n$ rows of $U$ as representing the $n$ data points with $r$ derived variables (put differently, columns of $U$ are $r$ derived variables). The columns of $U$ are orthonormal: $U^TU = I_{r \times r}$.
+We refer to all $U \in \mathbb{R}^{n \times r}$ matrices as scores. We can view the $n$ rows of $U$ as representing the $n$ data points with $r$ derived (latent) variables (put differently, columns of $U$ are $r$ derived variables). The columns of $U$ are orthonormal: $U^TU = I_{r \times r}$ (so the derived variables are uncorrelated).
 
-Sometimes we may want $UD$ i.e scale the columns of $U$ by $D$ (the columns are still orthogonal). The can be useful when we want to represent the original data by $r$ variables. We refer to $UD$ as unnormalized scores.
+Sometimes we may want $UD$ i.e scale the columns of $U$ by $D$ (the columns are still orthogonal). This can be useful when we want to represent the original data by $r$ variables. We refer to $UD$ as unnormalized scores. (TODO: put on original scale, TODO: say something about units)
 
-We refer to all $V\in \mathbb{R}^{d \times r}$ matrices as loadings^[For PCA we used tildes (e.g. $\widetilde{U}$) to denote the "partial" SVD approximation however for the final JIVE decomposition we do not use tildes. This is intentional since for JIVE the SVD comes from the $I$ and $J$ matrices which are exactly rank $r$. Therefore we view this SVD as the "full" SVD.]. The j$th$ column of $V$ gives the linear combination of the original $d$ variables which is equal to the j$th$ unnormalized scores (j$th$ column of $UD$). Equivalently, if we project the $n$ data points (rows of $X$) onto the j$th$ column of $V$ we get the j$th$ unnormalized scores. 
+We refer to all $V\in \mathbb{R}^{d \times r}$ matrices as loadings^[For PCA we used tildes (e.g. $\widetilde{U}$) to denote the "partial" SVD approximation however for the final JIVE decomposition we do not use tildes. This is intentional since for JIVE the SVD comes from the $I$ and $J$ matrices which are exactly rank $r$. Therefore we view this SVD as the "full" SVD.]. The j$th$ column of $V$ gives the linear combination of the original $d$ variables which is equal to the j$th$ unnormalized scores (j$th$ column of $UD$). Similarly, if we project the $n$ data points (rows of $X$) onto the j$th$ column of $V$ we get the j$th$ unnormalized scores. 
 
-The typical geometric perspective of PCA is that the scores represent $r$ new derived variables. For example, if $r = 2$ we can look at a scatter plot that gives a two dimensional approximation of the data. In other words, the rows of the scores matrix are $n$ data points living in $\mathbb{R}^r$. 
+The typical geometric perspective of PCA is that the scores represent $r$ new derived variables. For example, if $r = 2$ we can look at a scatter plot that gives a view of a two dimensional approximation of the data. In other words, the rows of the scores matrix are $n$ data points living in $\mathbb{R}^r$. 
 
 An alternative geometric perspective is the $r$ columns of the scores matrix are vectors living in $\mathbb{R}^n$. The original $d$ variables span a subspace of $\mathbb{R}^n$ given by $\text{col-span}(X)$. The scores then span a lower dimensional subspace of $\mathbb{R}^n$ that approximates $\text{col-span}(X)$.
 
 The first perspective says PCA finds a lower dimensional approximation to a subspace in $\mathbb{R}^d$ (spanned by the $n$ data points). The second perspective says PCA finds a lower dimensional approximation to a subspace in $\mathbb{R}^n$ (spanned by the $d$ data points).
 
-## JIVE operating in score space
+## JIVE operating in observation space
 
-For a data matrix $X$ let's call the span of the variables (columns) the *score subpace*, $\text{col-span}(X) \subset \mathbb{R}^n$. Typically we think of a data matrix as $n$ points in $\mathbb{R}^d$. The score space perspective reverses this and says a data matrix is $d$ points in $\mathbb{R}^n$. When thinking in the score space it's common to consider about subspaces i.e. the span of the $d$ variables in $\mathbb{R}^n$. In other words, if two data matrices have the same column span then their score subspaces are the same^[This might remind the reader of TODO].
+For a data matrix $X$ let's call the span of the variables (columns) the *observation subspace*, $\text{col-span}(X) \subset \mathbb{R}^n$ (as discussed above). When thinking in the observation space it's common to think of it terms of subspaces i.e. the span of the $d$ variables in $\mathbb{R}^n$. In other words, if two data matrices have the same column span then their observation subspaces are the same^[This might remind the reader of TODO].
 
-JIVE partitions the score space of each data matrix into three subspaces: joint, individual and noise. The joint score subspace for each data block is the same. The individual score subspace, however, is (possibly) different for each of the $K$ blocks. The k$th$ block's individual score subspace is orthogonal to the joint score subspace. Recall that the $K$ data matrices have the same number of observations ($n$) so it makes sense to think about how the data matrices relate to each other in score space.
+JIVE partitions the observation space of each data matrix into three subspaces: joint, individual and noise. The joint subspace for each data block is the same. The individual subspace, however, is (possibly) different for each of the $K$ blocks. The k$th$ block's individual subspace is orthogonal to the joint subspace. Recall that the $K$ data matrices have the same number of observations ($n$) so it makes sense to think about how the data matrices relate to each other in observation space (TODO: talk about subspaces).
 
-PCA partitions the score space into two subspaces: signal and noise (see above). For JIVE we might combine the joint and individual score subspaces and call this the signal score subspace.
-
-
+PCA partitions the observation space into two subspaces: signal and noise (see above). Similarly JIVE partitions the observation space into a signal space and a noise space. JIVE then partitions the signal space into a joint and individual space for each data block. 
 
 
 <!-- $:= \text{col-span}(J)$ (where $J \in \mathbb{R}^{n \times r_{joint}}$ is a basis for the joint score subspace) -->
-

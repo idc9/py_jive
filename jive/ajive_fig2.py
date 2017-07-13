@@ -51,6 +51,7 @@ def generate_data_ajive_fig2(seed=None):
 
     Y_obs = Y_joint + Y_indiv + Y_noise
 
+    # TODO: make this into a list of dicts i.e. hierarchical
     return X_obs, X_joint, X_indiv, X_noise, Y_obs, Y_joint, Y_indiv, Y_noise
 
 

@@ -24,10 +24,10 @@ class JiveBlock(object):
         self.d = X.shape[1]
 
         self.name = name
-        
+
         # Options
         self.full = full
-        
+
         # Compute initial SVD
         self.initial_svd()
 
@@ -84,7 +84,7 @@ class JiveBlock(object):
         joint_scores: joint scors matrix
         """
         self.estimate_joint_space(joint_scores)
-        
+
         self.estimate_individual_space(joint_scores)
 
         # save ranks
@@ -211,9 +211,8 @@ def get_block_joint_space(X, joint_scores, full=True):
     block_joint_sv = block_joint_sv[0:joint_rank]
     block_joint_loadings = block_joint_loadings[:, 0:joint_rank]
 
-    # possibly kill J matrix
     if not full:
-        J = np.matrix([])
+        J = np.matrix([])  # kill J matrix to save memory
 
     return J, block_joint_scores, block_joint_sv, block_joint_loadings
 
@@ -253,13 +252,12 @@ def get_block_individual_space(X, joint_scores, sv_threshold, full=True):
     block_individual_loadings = block_individual_loadings[:, 0:individual_rank]
 
     # full block individual representation
-    I = np.dot(block_individual_scores,
-               np.dot(np.diag(block_individual_sv),
-                      block_individual_loadings.T))
-
-    # kill I matrix
-    if not full:
-        I = np.matrix([])
+    if full:
+        I = np.dot(block_individual_scores,
+                   np.dot(np.diag(block_individual_sv),
+                          block_individual_loadings.T))
+    else:
+        I = np.matrix([])  # Kill I matrix to save memory
 
     return I, block_individual_scores, block_individual_sv, block_individual_loadings
 
@@ -298,6 +296,8 @@ def block_JIVE_decomposition(X, joint_scores, sv_threshold):
 
     # threshold singular values of orthogonal matrix
     individual_rank = sum(D_xo > sv_threshold)
+    # TODO: what if individual_rank == 0?
+    # TODO: give user option to manually select individual rank
 
     # estimate individual space
     I = svd_approx(U_xo, D_xo, V_xo, individual_rank)

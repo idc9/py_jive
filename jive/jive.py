@@ -37,8 +37,8 @@ class Jive(object):
         if show_scree_plot:
             self.scree_plot()
 
-        # options
-        self.wedin_estimate = wedin_estimate
+        if wedin_estimate:
+            self.wedin_estimate = wedin_estimate
 
     def get_block_initial_singular_values(self):
         """
@@ -87,6 +87,7 @@ class Jive(object):
             joint_sv_bound = self.K - sum([b ** 2 for b in wedin_bounds])
 
         # SVD on joint scores matrx
+        # TODO: joint_scores_decomposition might be over functioning
         self.joint_scores, self.joint_sv, self.joint_loadings = joint_scores_decomposition([self.blocks[k].
                                                                 signal_basis for
                                                                 k in range(self.K)])
