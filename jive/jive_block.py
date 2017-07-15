@@ -178,6 +178,7 @@ def get_sv_threshold(singular_values, rank):
 
     rank: rank of the threshold
     """
+    # Note the zero indexing so rank = the rank + 1th singular value
     return .5 * (singular_values[rank - 1] + singular_values[rank])
 
 
@@ -264,6 +265,7 @@ def get_block_individual_space(X, joint_scores, sv_threshold, full=True):
 
 def block_JIVE_decomposition(X, joint_scores, sv_threshold):
     """
+    CURRENTLY NOT USED
     Computes the JIVE decomposition for an individual data block. Only returns
     J, I, E and individual rank.
 
@@ -283,6 +285,7 @@ def block_JIVE_decomposition(X, joint_scores, sv_threshold):
     E: esimated error matrix
     individual_rank: rank of the esimated individual space
     """
+    # TODO: maybe reorder projection computation
     # compute orthogonal projection matrices
     joint_projection = np.dot(joint_scores, joint_scores.T)
     joint_projection_ortho = np.eye(X.shape[0]) - joint_projection

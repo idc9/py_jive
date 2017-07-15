@@ -28,7 +28,7 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
                                             num_samples=num_samples)
 
     # compute upper bound
-    # maybe this way??
+    # TODO: which way?
     # EV_estimate = np.median(V_sampled_norms)
     # UE_estimate = np.median(U_sampled_norms)
     # wedin_bound_est = max(EV_estimate, UE_estimate)/sigma_min
@@ -62,13 +62,14 @@ def resampled_wedin_bound(X, orthogonal_basis, rank,
     an array of the resampled norms
     """
 
-    rs_norms = [0]*num_samples
+    resampled_norms = [0]*num_samples
 
     for s in range(num_samples):
 
         # sample columns from orthogonal basis
         sampled_col_index = np.random.choice(orthogonal_basis.shape[1], size=rank, replace=True)
-        resampled_basis = orthogonal_basis[:, sampled_col_index]  # this is V* from AJIVE p12
+        resampled_basis = orthogonal_basis[:, sampled_col_index]
+        # ^ this is V* from AJIVE p12
 
         # project observed data
         if right_vectors:
@@ -77,6 +78,6 @@ def resampled_wedin_bound(X, orthogonal_basis, rank,
             resampled_projection = np.dot(X.T, resampled_basis)
 
         # compute resampled operator L2 nrm
-        rs_norms[s] = np.linalg.norm(resampled_projection, ord=2)  # operator L2 norm
+        resampled_norms[s] = np.linalg.norm(resampled_projection, ord=2)
 
     return rs_norms

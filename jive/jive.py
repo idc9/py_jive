@@ -105,7 +105,7 @@ class Jive(object):
         self.joint_sv = self.joint_sv[0:self.joint_rank]
 
         # possibly remove columns
-        self.check_identifiability_constraint()
+        self.reconsider_joint_components()
 
         # can now compute final decomposotions
         self.compute_final_decomposition()
@@ -133,7 +133,7 @@ class Jive(object):
         # can now compute final decomposotions
         self.compute_final_decomposition()
 
-    def check_identifiability_constraint(self):
+    def reconsider_joint_components(self):
         """
         Checks the identifability
         """
