@@ -46,7 +46,6 @@ Example
     from jive.jive import jive
     from jive.jive_visualization import plot_jive_full_estimates
 
-    # load some example data
     X = np.load('data/toy_ajive_fig2_x.npy')
     Y = np.load('data/toy_ajive_fig2_y.npy')
     blocks = [X, Y]
@@ -55,10 +54,8 @@ Example
     jive = Jive(blocks, wedin_estimate=True)
     jive.set_signal_ranks([2, 3]) # select signal ranks based on scree plot
 
-    # get all JIVE estimated data
     block_estimates = jive.get_block_estimates()
 
-    # plot full JIVE estimates
     plot_jive_full_estimates(jive)
 
 For some more example code see `this notebook`_.
