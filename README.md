@@ -7,7 +7,7 @@ Additional documentation, examples and code revisions are coming soon. For quest
 
 # Overview
 
-Angle based Joint and Individual Variation Explained (AJIVE) is a dimensionality reduction algorithm for the multi-block setting i.e. $K$ different data matrices, with the same set of observations and (possibly) different numbers of variables) **AJIVE finds *joint* modes of variation which are common to all $K$ data blocks as well as modes of *individual* variation which are specific to each block.** For a detailed discussion of AJIVE see [Angle-Based Joint and Individual Variation Explained](https://arxiv.org/pdf/1704.02060.pdf). 
+Angle based Joint and Individual Variation Explained (AJIVE) is a dimensionality reduction algorithm for the multi-block setting i.e. K different data matrices, with the same set of observations and (possibly) different numbers of variables) **AJIVE finds *joint* modes of variation which are common to all K data blocks as well as modes of *individual* variation which are specific to each block.** For a detailed discussion of AJIVE see [Angle-Based Joint and Individual Variation Explained](https://arxiv.org/pdf/1704.02060.pdf). 
 
 An R version of this package can be found [**here**](https://github.com/idc9/r_jive).
 
@@ -64,6 +64,6 @@ We welcome contributions to make this a stronger package: data examples, bug fix
 
 #### Citation
 
-A [Jouranl of Statistical Software](https://www.jstatsoft.org/index) is hopefully coming soon...
+A [Journal of Statistical Software](https://www.jstatsoft.org/index) is hopefully coming soon...
 
 
