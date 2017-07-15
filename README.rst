@@ -23,8 +23,14 @@ An R version of this package can be found `**here**`_.
 
 Installation
 ============
+To install use pip:
 
-Clone the repo:
+::
+
+    pip install jive
+
+
+Or lone the repo:
 
 ::
 
@@ -39,19 +45,19 @@ Example
     import numpy as np
     from jive.jive import jive
     from jive.jive_visualization import plot_jive_full_estimates
-        
+
     # load some example data
     X = np.load('data/toy_ajive_fig2_x.npy')
     Y = np.load('data/toy_ajive_fig2_y.npy')
     blocks = [X, Y]
-        
+
     # fit JIVE
     jive = Jive(blocks, wedin_estimate=True)
     jive.set_signal_ranks([2, 3]) # select signal ranks based on scree plot
-        
+
     # get all JIVE estimated data
     block_estimates = jive.get_block_estimates()
-        
+
     # plot full JIVE estimates
     plot_jive_full_estimates(jive)
 
@@ -85,7 +91,7 @@ bug fixes, spelling errors, new features, etc.
 Citation
 ^^^^^^^^
 
-A `Journal of Statistical Software`_ is hopefully coming soon…
+A `Journal of Statistical Software`_ paper is hopefully coming soon…
 
 .. _Iain Carmichael: https://idc9.github.io/
 .. _Angle-Based Joint and Individual Variation Explained: https://arxiv.org/pdf/1704.02060.pdf
