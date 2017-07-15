@@ -13,7 +13,7 @@ Overview
 Angle based Joint and Individual Variation Explained (AJIVE) is a
 dimensionality reduction algorithm for the multi-block setting i.e. K
 different data matrices, with the same set of observations and
-(possibly) different numbers of variables) **AJIVE finds *joint* modes
+(possibly) different numbers of variables. **AJIVE finds *joint* modes
 of variation which are common to all K data blocks as well as modes of
 *individual* variation which are specific to each block.** For a
 detailed discussion of AJIVE see `Angle-Based Joint and Individual
