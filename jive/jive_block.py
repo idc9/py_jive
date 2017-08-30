@@ -35,7 +35,7 @@ class JiveBlock(object):
         """
         SVD for initial signal space extraction
         """
-        self.U, self.D, self.V = get_svd(X)
+        self.U, self.D, self.V = get_svd(self.X)
 
     def scree_plot(self):
         """
