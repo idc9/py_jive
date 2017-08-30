@@ -80,4 +80,4 @@ def resampled_wedin_bound(X, orthogonal_basis, rank,
         # compute resampled operator L2 nrm
         resampled_norms[s] = np.linalg.norm(resampled_projection, ord=2)
 
-    return rs_norms
+    return resampled_norms
