@@ -37,8 +37,7 @@ class Jive(object):
         if show_scree_plot:
             self.scree_plot()
 
-        if wedin_estimate:
-            self.wedin_estimate = wedin_estimate
+        self.wedin_estimate = wedin_estimate
 
     def get_block_initial_singular_values(self):
         """
