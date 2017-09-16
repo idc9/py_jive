@@ -43,7 +43,7 @@ Example
 .. code:: python
 
     import numpy as np
-    from jive import jive
+    from jive.jive import Jive
     from jive.jive_visualization import plot_jive_full_estimates
 
     X = np.load('data/toy_ajive_fig2_x.npy')
