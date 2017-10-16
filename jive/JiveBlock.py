@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from jive.wedin_bound import get_wedin_bound
-from jive.lin_alg_fun import get_svd, scree_plot
+from .wedin_bound import get_wedin_bound
+from .lin_alg_fun import get_svd, scree_plot
 
 from scipy.sparse import issparse
 from scipy.sparse.linalg import svds
