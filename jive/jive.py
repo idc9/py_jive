@@ -88,10 +88,8 @@ class Jive(object):
             joint_sv_bound = self.K - sum([b ** 2 for b in wedin_bounds])
 
         # SVD on joint scores matrx
-        # TODO: joint_scores_decomposition might be over functioning
-        self.joint_scores, self.joint_sv, self.joint_loadings = joint_scores_decomposition([self.blocks[k].
-                                                                signal_basis for
-                                                                k in range(self.K)])
+        joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
+        self.joint_scores, self.joint_sv, self.joint_loadings =  get_svd(joint_scores_matrix)
 
         # estimate joint rank with wedin bound
         if self.K == 2:
@@ -229,20 +227,3 @@ class Jive(object):
         # TODO: give the option to return only some of I, J and E
         return [self.blocks[k].get_full_jive_estimates()
                 for k in range(self.K)]
-
-
-def joint_scores_decomposition(block_signal_bases):
-    """
-    Computes the SVD of the concatonated scores matrix to find the joint space.
-
-    Paramters
-    ---------
-    signal_bases: list of bases for each block signal spaces (i.e. the Us from
-    the initial block SVD)
-
-    Output
-    ------
-    U_joint, D_joint, V_joint
-    """
-    joint_scores_matrix = np.bmat(block_signal_bases)
-    return get_svd(joint_scores_matrix)
