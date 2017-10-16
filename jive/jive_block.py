@@ -2,12 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from jive.wedin_bound import get_wedin_bound
-from jive.lin_alg_fun import get_svd, svd_approx, scree_plot
+from jive.lin_alg_fun import get_svd, scree_plot
 
+from scipy.sparse import issparse
+from scipy.sparse.linalg import svds
+from scipy.linalg import svd as full_svd
+
+from py_fun_iain.sparse.GenSpMatPPtS import GenSpMatPPtS
+from py_fun_iain.sparse.GenSpMatI_PPtS import GenSpMatI_PPtS
+from py_fun_iain.sparse.GenSparseMat import is_gen_sparse_matrix
 
 class JiveBlock(object):
 
-    def __init__(self, X, full=True, name=None):
+    def __init__(self, X, init_svd_rank, save_full_final_decomp, name=None):
         """
         Stores a single data block (rows as observations).
 
@@ -15,7 +22,10 @@ class JiveBlock(object):
         ---------
         X: a data block
 
-        full: whether or not to save the full I, J, E matrices
+        init_svd_rank: rank of the first SVD before estimating the signal
+        rank. Optional unless the matrix is sparse.
+
+        save_full_final_decomp: whether or not to save the full I, J, E matrices
 
         name: the (optional) name of the block
         """
@@ -26,16 +36,24 @@ class JiveBlock(object):
         self.name = name
 
         # Options
-        self.full = full
+        self.save_full_final_decomp = save_full_final_decomp
 
         # Compute initial SVD
+        if issparse(X) and (init_svd_rank is None):
+            raise ValueError('sparse matrices must have an init_svd_rank')
+
+        if (init_svd_rank is not None) and ((init_svd_rank < 1) or (init_svd_rank > min(self.n, self.d))):
+            raise ValueError('init_svd_rank must be between 1 and min(n, d)')
+
+        self.init_svd_rank = init_svd_rank
         self.initial_svd()
 
     def initial_svd(self):
         """
         SVD for initial signal space extraction
         """
-        self.U, self.D, self.V = get_svd(self.X)
+        # TODO: rename these to scores, sv and loadings
+        self.U, self.D, self.V = svd_wrapper(self.X, self.init_svd_rank)
 
     def scree_plot(self):
         """
@@ -62,6 +80,9 @@ class JiveBlock(object):
         # initial signal space estimate
         self.signal_basis = self.U[:, 0:self.signal_rank]
 
+        # TODO: maybe give user the option to kill U, D, V at this point
+
+    def compute_wedin_bound(self):
         # use resampling to compute wedin bound estimate
         self.wedin_bound = get_wedin_bound(X=self.X,
                                            U=self.U,
@@ -92,7 +113,7 @@ class JiveBlock(object):
         self.joint_rank = joint_scores.shape[1]  # not necessary to save
 
         # estimate noise matrix
-        if self.full:
+        if self.save_full_final_decomp:
             self.E = self.X - (self.J + self.I)
             # self.X = None  # TODO: I think I can kill this here
         else:
@@ -105,7 +126,7 @@ class JiveBlock(object):
         self.J, self.block_joint_scores,  self.block_joint_sv, \
         self.block_joint_loadings = get_block_joint_space(X=self.X,
                                                           joint_scores=joint_scores,
-                                                          full=self.full)
+                                                          save_full_final_decomp=self.save_full_final_decomp)
 
     def estimate_individual_space(self, joint_scores):
         """
@@ -116,7 +137,7 @@ class JiveBlock(object):
             get_block_individual_space(X=self.X,
                                        joint_scores=joint_scores,
                                        sv_threshold=self.sv_threshold,
-                                       full=self.full)
+                                       save_full_final_decomp=self.save_full_final_decomp)
 
     def get_jive_estimates(self):
         """
@@ -145,7 +166,7 @@ class JiveBlock(object):
         Returns only the full JIVE estimaes J, I, E
         """
         estimates = {}
-        if self.full:
+        if self.save_full_final_decomp:
             estimates['J'] = self.J
             estimates['I'] = self.I
             estimates['E'] = self.E
@@ -182,7 +203,7 @@ def get_sv_threshold(singular_values, rank):
     return .5 * (singular_values[rank - 1] + singular_values[rank])
 
 
-def get_block_joint_space(X, joint_scores, full=True):
+def get_block_joint_space(X, joint_scores, save_full_final_decomp=True):
     """"
     Finds a block's joint space representation and the SVD of this space.
 
@@ -192,7 +213,7 @@ def get_block_joint_space(X, joint_scores, full=True):
 
     joint_scores: joint scores matrix for joint space
 
-    full: whether or not to return the full J matrix
+    save_full_final_decomp: whether or not to return the full J matrix
 
     Output
     ------
@@ -201,24 +222,30 @@ def get_block_joint_space(X, joint_scores, full=True):
     note the last three terms are the SVD approximation of I
     """
 
-    # compute full block joint represntation
-    joint_projection = np.dot(joint_scores, joint_scores.T)
-    J = np.dot(joint_projection, X)
+    # # compute full block joint represntation
+    # joint_projection = np.dot(joint_scores, joint_scores.T)
+    # J = np.dot(joint_projection, X)
 
-    # compute block joint SVD
-    block_joint_scores, block_joint_sv, block_joint_loadings = get_svd(J)
+    # # compute block joint SVD
+    # block_joint_scores, block_joint_sv, block_joint_loadings = get_svd(J)
+
+    if issparse(X):
+        J = GenSpMatPPtS(X, joint_scores)
+
+    else:
+        J = np.dot(joint_scores, np.dot(joint_scores.T, X))
+
+
     joint_rank = joint_scores.shape[1]
-    block_joint_scores = block_joint_scores[:, 0:joint_rank]
-    block_joint_sv = block_joint_sv[0:joint_rank]
-    block_joint_loadings = block_joint_loadings[:, 0:joint_rank]
+    scores, sv, loadings = svd_wrapper(J, joint_rank)
 
-    if not full:
+    if not save_full_final_decomp:
         J = np.matrix([])  # kill J matrix to save memory
 
-    return J, block_joint_scores, block_joint_sv, block_joint_loadings
+    return J, scores, sv, loadings
 
 
-def get_block_individual_space(X, joint_scores, sv_threshold, full=True):
+def get_block_individual_space(X, joint_scores, sv_threshold, save_full_final_decomp=True):
     """"
     Finds a block's individual space representation and the SVD of this space
 
@@ -230,7 +257,7 @@ def get_block_individual_space(X, joint_scores, sv_threshold, full=True):
 
     sv_threshold: singular value threshold
 
-    full: whether or not to return the full I matrix
+    save_full_final_decomp: whether or not to return the full I matrix
 
     Output
     ------
@@ -239,74 +266,96 @@ def get_block_individual_space(X, joint_scores, sv_threshold, full=True):
     note the last three terms are the SVD approximation of I
     """
 
-    joint_projection_othogonal = np.eye(X.shape[0]) - \
-        np.dot(joint_scores, joint_scores.T)
+    # joint_projection_othogonal = np.eye(X.shape[0]) - \
+    #     np.dot(joint_scores, joint_scores.T)
 
-    # SVD of orthogonal projection
-    X_ortho = np.dot(joint_projection_othogonal, X)
-    block_individual_scores, block_individual_sv, block_individual_loadings = get_svd(X_ortho)
+    # # SVD of orthogonal projection
+    # X_ortho = np.dot(joint_projection_othogonal, X)
+    # block_individual_scores, block_individual_sv, block_individual_loadings = get_svd(X_ortho)
+
+    if issparse(X):
+        I = GenSpMatI_PPtS(X, joint_scores)
+
+    else:
+        I = X - np.dot(joint_scores, np.dot(joint_scores.T, X))
+
+
+    joint_rank = joint_scores.shape[1]
+    scores, sv, loadings = svd_wrapper(I, joint_rank)
 
     # compute individual rank
-    individual_rank = sum(block_individual_sv > sv_threshold)
-    block_individual_scores = block_individual_scores[:, 0:individual_rank]
-    block_individual_sv = block_individual_sv[0:individual_rank]
-    block_individual_loadings = block_individual_loadings[:, 0:individual_rank]
+    individual_rank = sum(sv > sv_threshold)
+    scores = scores[:, 0:individual_rank]
+    sv = sv[0:individual_rank]
+    loadings = loadings[:, 0:individual_rank]
 
     # full block individual representation
-    if full:
-        I = np.dot(block_individual_scores,
-                   np.dot(np.diag(block_individual_sv),
-                          block_individual_loadings.T))
+    if save_full_final_decomp:
+        I = np.dot(scores, np.dot(np.diag(sv), loadings.T))
     else:
         I = np.matrix([])  # Kill I matrix to save memory
 
-    return I, block_individual_scores, block_individual_sv, block_individual_loadings
+    return I, scores, sv, loadings
 
 
-def block_JIVE_decomposition(X, joint_scores, sv_threshold):
+def svd_wrapper(X, rank = None):
     """
-    CURRENTLY NOT USED
-    Computes the JIVE decomposition for an individual data block. Only returns
-    J, I, E and individual rank.
-
+    Computes the (possibly partial) SVD of a matrix. Handles the case where
+    X is either dense or sparse.
+    
     Parameters
     ----------
-    X: observed data matrix
-
-    joint_scores: joint scores
-
-    sv_threshold: singular value threshold
+    X: either dense or sparse
+    rank: rank of the desired SVD (required for sparse matrices)
 
     Output
     ------
-    J, I, E, individual_rank
-    J: estimated joint signal matrix
-    I: estimated indiviual signal
-    E: esimated error matrix
-    individual_rank: rank of the esimated individual space
+    U, D, V
+    the columns of U are the left singular vectors
+    the COLUMNS of V are the left singular vectors
+
     """
-    # TODO: maybe reorder projection computation
-    # compute orthogonal projection matrices
-    joint_projection = np.dot(joint_scores, joint_scores.T)
-    joint_projection_ortho = np.eye(X.shape[0]) - joint_projection
+    if is_gen_sparse_matrix(X):
+        scipy_svds = svds(X.as_linear_operator(), rank)
+        U, D, V = fix_scipy_svds(scipy_svds)
+        V = V.T
+    
+    elif issparse(X):
+        scipy_svds = svds(X, rank)
+        U, D, V = fix_scipy_svds(scipy_svds)
+        V = V.T
+        
+    else:
+        U, D, V = full_svd(X, full_matrices=False)
+        V = V.T
 
-    # estimate joint spaces
-    J = np.dot(joint_projection, X)
+    if rank:
+        U = U[:, :rank]
+        D = D[:rank]
+        V = V[:, :rank]
+        
+    return U, D, V
 
-    # SVD of orthogonal projection
-    X_ortho = np.dot(joint_projection_ortho, X)
-    U_xo, D_xo, V_xo = get_svd(X_ortho)
 
-    # threshold singular values of orthogonal matrix
-    individual_rank = sum(D_xo > sv_threshold)
-    # TODO: what if individual_rank == 0?
-    # TODO: give user option to manually select individual rank
+def fix_scipy_svds(scipy_svds):
+    """
+    scipy.sparse.linalg.svds orders the singular values backwards,
+    this function fixes this insanity and returns the singular values
+    in decreasing order
+    
+    Parameters
+    ----------
+    scipy_svds: the out put from scipy.sparse.linalg.svds
+    
+    Output
+    ------
+    U, D, V
+    ordered in decreasing singular values
+    """
+    U, D, V = scipy_svds
 
-    # estimate individual space
-    I = svd_approx(U_xo, D_xo, V_xo, individual_rank)
+    U = U[:, ::-1]
+    D = D[::-1]
+    V = V[::-1, :]
 
-    # estimate noise
-    E = X - (J + I)
-
-    # return {'J': J, 'I': I, 'E': E, 'individual_rank': individual_rank}
-    return J, I, E, individual_rank
+    return U, D, V
