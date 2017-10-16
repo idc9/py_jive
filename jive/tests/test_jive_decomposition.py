@@ -84,9 +84,9 @@ class JiveDecomposition(unittest.TestCase):
         """
         for k in range(self.K):
             I = self.block_estimates[k]["individual"]["full"]
-            U = self.block_estimates[k]["individual"]["U"]
-            D = self.block_estimates[k]["individual"]["D"]
-            V = self.block_estimates[k]["individual"]["V"]
+            U = self.block_estimates[k]["individual"]["scores"]
+            D = self.block_estimates[k]["individual"]["sing_vals"]
+            V = self.block_estimates[k]["individual"]["loadings"]
 
             # compare SVD reconstruction to I matrix
             svd_reconstruction = np.dot(U, np.dot(np.diag(D), V.T))
@@ -100,9 +100,9 @@ class JiveDecomposition(unittest.TestCase):
         """
         for k in range(self.K):
             J = self.block_estimates[k]["joint"]["full"]
-            U = self.block_estimates[k]["joint"]["U"]
-            D = self.block_estimates[k]["joint"]["D"]
-            V = self.block_estimates[k]["joint"]["V"]
+            U = self.block_estimates[k]["joint"]["scores"]
+            D = self.block_estimates[k]["joint"]["sing_vals"]
+            V = self.block_estimates[k]["joint"]["loadings"]
 
             # compare SVD reconstruction to I matrix
             svd_reconstruction = np.dot(U, np.dot(np.diag(D), V.T))
@@ -115,9 +115,9 @@ class JiveDecomposition(unittest.TestCase):
         Check the joint space.
         """
         # TODO: come up with more tests
-        U = self.joint_space_estimate['U']
-        D = self.joint_space_estimate['D']
-        V = self.joint_space_estimate['V']
+        U = self.joint_space_estimate['scores']
+        D = self.joint_space_estimate['sing_vals']
+        V = self.joint_space_estimate['loadings']
         rank = self.joint_space_estimate['rank']
 
         # check shapes
