@@ -10,6 +10,7 @@ def projection_matrix(X):
 
     i.e. Pv projects v onto the columns of X
     """
+    # TODO: kill this
     if len(X.shape) == 1:  # x is a vector
         return np.outer(X, X)
     else:
@@ -53,6 +54,7 @@ def get_svd(X):
     >>> np.allclose(X, np.dot(U, np.dot(np.diag(D), V.T)))
     True
     """
+    # TODO: kill this helper function
     U, d, V_T = np.linalg.svd(X, full_matrices=False)
     return U, d, V_T.T
 
@@ -72,6 +74,7 @@ def svd_approx(U, D, V, r):
 
     r: rank of desiered approximation
     """
+    # TODO: kill this helper function
     return np.dot(U[:, 0:r], np.dot(np.diag(D[0:r]), V[:, 0:r].T))
 
 
@@ -107,7 +110,7 @@ def relative_error(true_value, estimate):
     """
     Relative error under L2/frobenius norm
     """
-    # TODO: what if treu value is zero?
+    # TODO: what if true value is zero?
     return np.linalg.norm(true_value - estimate) / np.linalg.norm(true_value)
 
 
