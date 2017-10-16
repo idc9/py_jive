@@ -53,7 +53,7 @@ class JiveBlock(object):
         SVD for initial signal space extraction
         """
         # TODO: rename these to scores, sv and loadings
-        self.U, self.D, self.V = svd_wrapper(self.X, self.init_svd_rank)
+        self.scores, self.sv, self.loadings = svd_wrapper(self.X, self.init_svd_rank)
 
     def scree_plot(self):
         """
@@ -63,7 +63,7 @@ class JiveBlock(object):
             title = self.name
         else:
             title = ''
-        scree_plot(self.D, 'X scree plot', diff=False, title=title)
+        scree_plot(self.sv, 'X scree plot', diff=False, title=title)
 
     def set_signal_rank(self, signal_rank):
         """
@@ -78,23 +78,23 @@ class JiveBlock(object):
         self.sv_threshold = get_sv_threshold(self.D, self.signal_rank)
 
         # initial signal space estimate
-        self.signal_basis = self.U[:, 0:self.signal_rank]
+        self.signal_basis = self.scores[:, 0:self.signal_rank]
 
         # TODO: maybe give user the option to kill U, D, V at this point
 
     def compute_wedin_bound(self):
         # use resampling to compute wedin bound estimate
         self.wedin_bound = get_wedin_bound(X=self.X,
-                                           U=self.U,
-                                           D=self.D,
-                                           V=self.V,
+                                           U=self.scores,
+                                           D=self.sv,
+                                           V=self.loadings,
                                            rank=self.signal_rank,
                                            num_samples=1000)
 
         # I think I can kill these now to save memory
-        self.U = None
-        self.V = None
-        self.D = None
+        self.scores = None
+        self.loadings = None
+        self.sv = None
 
     def final_decomposition(self, joint_scores):
         """
@@ -146,15 +146,15 @@ class JiveBlock(object):
         """
         estimates = {}
         estimates['joint'] = {'full': self.J,
-                              'U': self.block_joint_scores,
-                              'D': self.block_joint_sv,
-                              'V': self.block_joint_loadings,
+                              'scores': self.block_joint_scores,
+                              'sing_vals': self.block_joint_sv,
+                              'loadings': self.block_joint_loadings,
                               'rank': self.joint_rank}
 
         estimates['individual'] = {'full': self.I,
-                                   'U': self.block_individual_scores,
-                                   'D': self.block_individual_sv,
-                                   'V': self.block_individual_loadings,
+                                   'scores': self.block_individual_scores,
+                                   'sing_vals': self.block_individual_sv,
+                                   'loadings': self.block_individual_loadings,
                                    'rank': self.individual_rank}
 
         estimates['noise'] = self.E
@@ -222,16 +222,8 @@ def get_block_joint_space(X, joint_scores, save_full_final_decomp=True):
     note the last three terms are the SVD approximation of I
     """
 
-    # # compute full block joint represntation
-    # joint_projection = np.dot(joint_scores, joint_scores.T)
-    # J = np.dot(joint_projection, X)
-
-    # # compute block joint SVD
-    # block_joint_scores, block_joint_sv, block_joint_loadings = get_svd(J)
-
-    if issparse(X):
+    if issparse(X): # lazy evaluation for sparse matrices
         J = GenSpMatPPtS(X, joint_scores)
-
     else:
         J = np.dot(joint_scores, np.dot(joint_scores.T, X))
 
@@ -266,16 +258,8 @@ def get_block_individual_space(X, joint_scores, sv_threshold, save_full_final_de
     note the last three terms are the SVD approximation of I
     """
 
-    # joint_projection_othogonal = np.eye(X.shape[0]) - \
-    #     np.dot(joint_scores, joint_scores.T)
-
-    # # SVD of orthogonal projection
-    # X_ortho = np.dot(joint_projection_othogonal, X)
-    # block_individual_scores, block_individual_sv, block_individual_loadings = get_svd(X_ortho)
-
-    if issparse(X):
+    if issparse(X):  # lazy evaluation for sparse matrices
         I = GenSpMatI_PPtS(X, joint_scores)
-
     else:
         I = X - np.dot(joint_scores, np.dot(joint_scores.T, X))
 

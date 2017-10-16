@@ -212,7 +212,7 @@ class Jive(object):
         estimates[k]['individual']['full'] returns the full individual estimate
         for the kth data block (this is the I matrix). You can replace
         'individual' with 'joint'. Similarly you can replace 'full' with
-        'U', 'D', 'V', 'rank'
+        'scores', 'sing_vals', 'loadings', 'rank'
         """
         return [self.blocks[k].get_jive_estimates() for k in range(self.K)]
 
@@ -220,9 +220,9 @@ class Jive(object):
         """"
         Returns the SVD of the concatonated scores matrix.
         """
-        return {'U': self.joint_scores,
-                'D': self.joint_sv,
-                'V': self.joint_loadings,
+        return {'scores': self.joint_scores,
+                'sing_vals': self.joint_sv,
+                'loadings': self.joint_loadings,
                 'rank': self.joint_rank}
 
     def get_block_estimates(self):
@@ -236,7 +236,7 @@ class Jive(object):
         estimates[k]['individual']['full'] returns the full individual estimate
         for the kth data block (this is the I matrix). You can replace
         'individual' with 'joint'. Similarly you can replace 'full' with
-        'U', 'D', 'V', 'ranks'
+        'scores', 'sing_vals', 'loadings', 'ranks'
         """
         return [self.blocks[k].get_jive_estimates() for k in range(self.K)]
 
