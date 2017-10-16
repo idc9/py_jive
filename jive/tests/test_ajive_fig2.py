@@ -3,7 +3,7 @@ import numpy as np
 
 from jive.jive.lin_alg_fun import *
 from jive.jive.ajive_fig2 import *
-from jive.jive.jive import *
+from jive.jive.Jive import *
 
 
 class AjiveFig2(unittest.TestCase):
@@ -25,12 +25,18 @@ class AjiveFig2(unittest.TestCase):
         self.Y_obs, self.Y_joint, self.Y_indiv, self. Y_noise = generate_data_ajive_fig2(seed)
 
         blocks = [self.X_obs, self.Y_obs]
-        wedin_bound = True
+        init_svd_ranks = None
+        wedin_estimate = True
         show_scree_plot = False
-        full = True
+        save_full_final_decomp = True
 
         # compute JIVE decomposition
-        jive = Jive(blocks, wedin_bound, full, show_scree_plot)
+        jive = Jive(blocks=blocks,
+                    init_svd_ranks=init_svd_ranks,
+                    wedin_estimate=wedin_estimate,
+                    save_full_final_decomp=save_full_final_decomp,
+                    show_scree_plot=show_scree_plot)
+    
         jive.set_signal_ranks([2, 3])  # we know the true ranks
         self.block_estimates = jive.get_block_estimates()
 

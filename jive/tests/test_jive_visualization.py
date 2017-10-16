@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 from jive.jive.ajive_fig2 import *
-from jive.jive.jive import *
+from jive.jive.Jive import *
 from jive.jive.jive_visualization import *
 
 

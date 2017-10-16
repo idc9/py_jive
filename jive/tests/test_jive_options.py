@@ -3,7 +3,7 @@ import numpy as np
 
 from jive.jive.lin_alg_fun import *
 from jive.jive.ajive_fig2 import *
-from jive.jive.jive import *
+from jive.jive.Jive import *
 
 
 class JiveOptions(unittest.TestCase):
@@ -15,7 +15,7 @@ class JiveOptions(unittest.TestCase):
         Sample data.
         """
         # sample platonic data
-        seed = 23423
+        seed = 2343
         X_obs, X_joint, X_indiv, X_noise, \
             Y_obs, Y_joint, Y_indiv, Y_noise = generate_data_ajive_fig2(seed)
 
@@ -24,26 +24,39 @@ class JiveOptions(unittest.TestCase):
     def test_different_options(self):
         blocks = self.blocks
 
-        jive = Jive(blocks, wedin_estimate=True, full=True,
+        jive = Jive(blocks,
+                    init_svd_ranks=None,
+                    wedin_estimate=True,
+                    save_full_final_decomp=True,
                     show_scree_plot=True)
+
         jive.set_signal_ranks([2, 3])
         block_estimates = jive.get_block_estimates()
         self.assertTrue(True)
 
-        jive = Jive(blocks, wedin_estimate=True, full=True,
+        jive = Jive(blocks,
+                    init_svd_ranks=None,
+                    wedin_estimate=True,
+                    save_full_final_decomp=True,
                     show_scree_plot=False)
+
         jive.set_signal_ranks([2, 3])
         block_estimates = jive.get_block_estimates()
         self.assertTrue(True)
 
-        jive = Jive(blocks, wedin_estimate=False, full=True,
+        jive = Jive(blocks, init_svd_ranks=None,
+                    wedin_estimate=False,
+                    save_full_final_decomp=True,
                     show_scree_plot=False)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
         block_estimates = jive.get_block_estimates()
         self.assertTrue(True)
 
-        jive = Jive(blocks, wedin_estimate=False, full=False,
+        jive = Jive(blocks,
+                    init_svd_ranks=None,
+                    wedin_estimate=False,
+                    save_full_final_decomp=False,
                     show_scree_plot=False)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
@@ -55,7 +68,10 @@ class JiveOptions(unittest.TestCase):
         Make sure that full matrices are returned in the block estimates.
         Make sure we can compute the full block estimates.
         """
-        jive = Jive(self.blocks, wedin_estimate=False, full=True,
+        jive = Jive(self.blocks,
+                    init_svd_ranks=None,
+                    wedin_estimate=False,
+                    save_full_final_decomp=True,
                     show_scree_plot=False)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
@@ -88,7 +104,10 @@ class JiveOptions(unittest.TestCase):
         Make sure full matrices are not automatically comptued
         when full = False. Make sure we can compute the full block estimates.
         """
-        jive = Jive(self.blocks, wedin_estimate=False, full=False,
+        jive = Jive(self.blocks,
+                    init_svd_ranks=None,
+                    wedin_estimate=False,
+                    save_full_final_decomp=False,
                     show_scree_plot=False)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
@@ -114,6 +133,12 @@ class JiveOptions(unittest.TestCase):
             # make sure we can compute the full block estimates
             residual = X - (J + I + E)
             self.assertTrue(np.allclose(residual, 0))
+
+    def test_initial_svd(self):
+        pass
+
+    def test_same_number_observations_exception(self):
+        pass
 
 
 if __name__ == '__main__':

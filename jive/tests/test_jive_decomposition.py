@@ -3,7 +3,7 @@ import numpy as np
 
 from jive.jive.lin_alg_fun import *
 from jive.jive.ajive_fig2 import *
-from jive.jive.jive import *
+from jive.jive.Jive import *
 
 
 class JiveDecomposition(unittest.TestCase):
@@ -17,25 +17,33 @@ class JiveDecomposition(unittest.TestCase):
 
         # sample platonic data
         seed = 23423
-        self.X_obs, self.X_joint, self.X_indiv, self.X_noise, \
-        self.Y_obs, self.Y_joint, self.Y_indiv, self. Y_noise = generate_data_ajive_fig2(seed)
+        X_obs, X_joint, X_indiv, X_noise, Y_obs, Y_joint, Y_indiv, Y_noise = generate_data_ajive_fig2(seed)
 
-        self.blocks = [self.X_obs, self.Y_obs]
-        wedin_bound = True
-        full = True
+        blocks = [X_obs, Y_obs]
+
+        init_svd_ranks = None
+        wedin_estimate = True
         show_scree_plot = False
+        save_full_final_decomp = True
 
 
         # compute JIVE decomposition
-        jive = Jive(self.blocks, wedin_bound, full, show_scree_plot)
+        jive = Jive(blocks=blocks,
+                    wedin_estimate=wedin_estimate,
+                    save_full_final_decomp=save_full_final_decomp,
+                    show_scree_plot=show_scree_plot)
+
         jive.set_signal_ranks([2, 3])
+
         self.block_estimates = jive.get_block_estimates()
         self.joint_space_estimate = jive.get_joint_space_estimate()
 
+        self.blocks=blocks
         self.K = len(self.blocks)
-        self.dimensions = [self.blocks[k].shape[1] for k in range(self.K)]
+        self.dimensions = [blocks[k].shape[1] for k in range(self.K)]
         self.joint_rank = 1
         self.individual_ranks = [1, 2]
+
 
     def test_jive_decoposition(self):
         """
