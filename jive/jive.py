@@ -1,8 +1,10 @@
+from __future__ import print_function
+
 import numpy as np
 import matplotlib.pyplot as plt
 
-from lin_alg_fun import get_svd
-from jive_block import JiveBlock
+from jive.lin_alg_fun import get_svd
+from jive.jive_block import JiveBlock
 
 
 class Jive(object):
@@ -149,7 +151,7 @@ class Jive(object):
                 # if sv is below the thrshold for any data block remove j
                 if sv < self.blocks[k].sv_threshold:
                     # TODO: should probably keep track of this
-                    print 'removing column ' + str(j)
+                    print('removing column ' + str(j))
                     to_keep.remove(j)
                     break
 
@@ -161,7 +163,7 @@ class Jive(object):
 
         if self.joint_rank == 0:
             # TODO: how to handle this situation?
-            print 'warning all joint signals removed'
+            print('warning all joint signals removed')
 
     def compute_final_decomposition(self):
         # final decomposotion

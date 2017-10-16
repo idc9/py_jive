@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from wedin_bound import get_wedin_bound
-from lin_alg_fun import get_svd, svd_approx, scree_plot
+from jive.wedin_bound import get_wedin_bound
+from jive.lin_alg_fun import get_svd, svd_approx, scree_plot
 
 
 class JiveBlock(object):

@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils.extmath import safe_sparse_dot
 
 
 def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
@@ -15,16 +16,14 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
     """
 
     # resample for U and V
-    U_sampled_norms = resampled_wedin_bound(X=X,
+    U_sampled_norms = resampled_wedin_bound(X=X.T,
                                             orthogonal_basis=U[:, rank:],
                                             rank=rank,
-                                            right_vectors=False,
                                             num_samples=num_samples)
 
     V_sampled_norms = resampled_wedin_bound(X=X,
                                             orthogonal_basis=V[:, rank:],
                                             rank=rank,
-                                            right_vectors=True,
                                             num_samples=num_samples)
 
     # compute upper bound
@@ -39,8 +38,7 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
     return wedin_bound_est
 
 
-def resampled_wedin_bound(X, orthogonal_basis, rank,
-                          right_vectors, num_samples=1000):
+def resampled_wedin_bound(X, orthogonal_basis, rank, num_samples=1000):
     """
     Resampling procedure described in AJIVE paper for Wedin bound
 
@@ -72,10 +70,10 @@ def resampled_wedin_bound(X, orthogonal_basis, rank,
         # ^ this is V* from AJIVE p12
 
         # project observed data
-        if right_vectors:
-            resampled_projection = np.dot(X, resampled_basis)
-        else:
-            resampled_projection = np.dot(X.T, resampled_basis)
+
+        # resampled_projection = np.dot(X, resampled_basis)
+        resampled_projection = safe_sparse_dot(X, resampled_basis)
+
 
         # compute resampled operator L2 nrm
         resampled_norms[s] = np.linalg.norm(resampled_projection, ord=2)

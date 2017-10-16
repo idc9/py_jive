@@ -6,7 +6,7 @@ def readme():
         return f.read()
 
 
-install_requires = ['numpy', 'pandas', 'seaborn', 'matplotlib']
+install_requires = ['numpy', 'pandas', 'seaborn', 'matplotlib', 'sklearn']
 
 setup(name='jive',
       version='0.0.1',
