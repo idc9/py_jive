@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 
-from jive.jive.ajive_fig2 import *
-from jive.jive.Jive import *
-from jive.jive.jive_visualization import *
+from jive.ajive_fig2 import *
+from jive.Jive import *
+from jive.jive_visualization import *
 
 
 class JiveViz(unittest.TestCase):

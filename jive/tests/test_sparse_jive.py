@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 
-from jive.jive.lin_alg_fun import *
-from jive.jive.Jive import *
+from jive.lin_alg_fun import *
+from jive.Jive import *
 
 
 class SparseJIVE(unittest.TestCase):
