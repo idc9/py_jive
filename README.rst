@@ -34,7 +34,7 @@ Or clone the repo:
 
 ::
 
-    git clone https://github.com/idc9/jive.git
+    git clone https://github.com/idc9/py_jive.git
     python setup.py install
 
 Example
