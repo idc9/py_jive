@@ -42,7 +42,7 @@ class JiveBlock(object):
         if issparse(X) and (init_svd_rank is None):
             raise ValueError('sparse matrices must have an init_svd_rank')
 
-        if (init_svd_rank is not None) and ((init_svd_rank < 1) or (init_svd_rank > min(self.n, self.d))):
+        if (init_svd_rank is not None) and ((init_svd_rank < 1) or (init_svd_rank > min(self.n, self.d) - 1)):
             raise ValueError('init_svd_rank must be between 1 and min(n, d)')
 
         self.init_svd_rank = init_svd_rank
@@ -75,7 +75,7 @@ class JiveBlock(object):
         self.signal_rank = signal_rank
 
         # compute singular value threshold
-        self.sv_threshold = get_sv_threshold(self.D, self.signal_rank)
+        self.sv_threshold = get_sv_threshold(self.sv, self.signal_rank)
 
         # initial signal space estimate
         self.signal_basis = self.scores[:, 0:self.signal_rank]
@@ -137,6 +137,7 @@ class JiveBlock(object):
             get_block_individual_space(X=self.X,
                                        joint_scores=joint_scores,
                                        sv_threshold=self.sv_threshold,
+                                       init_svd_rank=self.init_svd_rank,
                                        save_full_final_decomp=self.save_full_final_decomp)
 
     def get_jive_estimates(self):
@@ -237,7 +238,8 @@ def get_block_joint_space(X, joint_scores, save_full_final_decomp=True):
     return J, scores, sv, loadings
 
 
-def get_block_individual_space(X, joint_scores, sv_threshold, save_full_final_decomp=True):
+def get_block_individual_space(X, joint_scores, sv_threshold,
+                               init_svd_rank=None, save_full_final_decomp=True):
     """"
     Finds a block's individual space representation and the SVD of this space
 
@@ -258,14 +260,19 @@ def get_block_individual_space(X, joint_scores, sv_threshold, save_full_final_de
     note the last three terms are the SVD approximation of I
     """
 
+    # project columns of X onto orthogonal complement to joint_scores
     if issparse(X):  # lazy evaluation for sparse matrices
         I = GenSpMatI_PPtS(X, joint_scores)
     else:
         I = X - np.dot(joint_scores, np.dot(joint_scores.T, X))
 
+    # SVD of projected matrix
+    # TODO: better bound on rank
+    max_rank = min(X.shape) - joint_scores.shape[1]
+    if init_svd_rank is not None:
+        max_rank = min(init_svd_rank, max_rank )
 
-    joint_rank = joint_scores.shape[1]
-    scores, sv, loadings = svd_wrapper(I, joint_rank)
+    scores, sv, loadings = svd_wrapper(I, max_rank)
 
     # compute individual rank
     individual_rank = sum(sv > sv_threshold)

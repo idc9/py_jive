@@ -15,22 +15,31 @@ class JiveViz(unittest.TestCase):
         """
         Sample data and compute JIVE estimates
         """
-        # TODO: think more about this number currently artibrary
-        self.rel_err_tolerance = .5
-
         # sample platonic data
         seed = 23423
-        self.X_obs, self.X_joint, self.X_indiv, self.X_noise, \
-        self.Y_obs, self.Y_joint, self.Y_indiv, self. Y_noise = generate_data_ajive_fig2(seed)
+        X_obs, X_joint, X_indiv, X_noise, \
+        Y_obs, Y_joint, Y_indiv, Y_noise = generate_data_ajive_fig2(seed)
 
-        self.blocks = [self.X_obs, self.Y_obs]
-        wedin_bound = True
+        blocks = [X_obs, Y_obs]
+        init_svd_ranks = None
+        wedin_estimate = True
         show_scree_plot = False
-        full = True
+        save_full_final_decomp = True
 
         # compute JIVE decomposition
-        self.jive = Jive(self.blocks , wedin_bound, full, show_scree_plot)
+        self.jive = Jive(blocks=blocks,
+                         init_svd_ranks=init_svd_ranks,
+                         wedin_estimate=wedin_estimate,
+                         save_full_final_decomp=save_full_final_decomp,
+                         show_scree_plot=show_scree_plot)
+
+
+
+
+
         self.jive.set_signal_ranks([2, 3])  # we know the true ranks
+
+        self.blocks = blocks
 
     def test_block_plot(self):
         """
