@@ -52,18 +52,15 @@ class Jive(object):
                                          save_full_final_decomp,
                                          'block ' + str(k + 1)))
 
+        # stores initial svs for each block
+        self.initial_svs = [self.blocks[k].sv for k in range(self.K)]
+
         # scree plot to decide on signal ranks
         if show_scree_plot:
             self.scree_plot()
 
         self.wedin_estimate = wedin_estimate
 
-    def get_block_initial_singular_values(self):
-        """
-        Returns the singluar values for the initial SVD for each block.
-        """
-        # TODO: rename
-        return [self.blocks[k].D for k in range(self.K)]
 
     def scree_plot(self, log=False, diff=False):
         """
