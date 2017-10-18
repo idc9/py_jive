@@ -62,10 +62,11 @@ class Jive(object):
         self.wedin_estimate = wedin_estimate
 
 
-    def scree_plot(self, log=False, diff=False):
+    def scree_plots(self, log=False, diff=False):
         """
         Draw scree plot for each data block
         """
+
         # scree plots for inital SVD
         plt.figure(figsize=[5 * self.K, 5])
         for k in range(self.K):
