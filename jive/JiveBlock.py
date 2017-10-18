@@ -55,7 +55,7 @@ class JiveBlock(object):
         # TODO: rename these to scores, sv and loadings
         self.scores, self.sv, self.loadings = svd_wrapper(self.X, self.init_svd_rank)
 
-    def scree_plot(self):
+    def scree_plot(self, log, diff):
         """
         Plots scree plot for initial SVD
         """
@@ -63,7 +63,7 @@ class JiveBlock(object):
             title = self.name
         else:
             title = ''
-        scree_plot(self.sv, 'X scree plot', diff=False, title=title)
+        scree_plot(self.sv, log=log, diff=diff,  title=title)
 
     def set_signal_rank(self, signal_rank):
         """

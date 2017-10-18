@@ -65,7 +65,7 @@ class Jive(object):
         # TODO: rename
         return [self.blocks[k].D for k in range(self.K)]
 
-    def scree_plot(self):
+    def scree_plot(self, log=False, diff=False):
         """
         Draw scree plot for each data block
         """
@@ -73,7 +73,7 @@ class Jive(object):
         plt.figure(figsize=[5 * self.K, 5])
         for k in range(self.K):
             plt.subplot(1, self.K, k + 1)
-            self.blocks[k].scree_plot()
+            self.blocks[k].scree_plot(log, diff)
 
     def set_signal_ranks(self, signal_ranks):
         """
