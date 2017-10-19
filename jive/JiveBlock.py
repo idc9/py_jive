@@ -311,8 +311,7 @@ def svd_wrapper(X, rank = None):
         U, D, V = fix_scipy_svds(scipy_svds)
         V = V.T
 
-
-    if issparse(X):
+    elif issparse(X):
         scipy_svds = svds(X, rank)
         U, D, V = fix_scipy_svds(scipy_svds)
         V = V.T
