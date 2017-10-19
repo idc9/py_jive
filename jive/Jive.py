@@ -10,7 +10,7 @@ from .JiveBlock import JiveBlock
 class Jive(object):
 
     def __init__(self, blocks, init_svd_ranks=None, wedin_estimate=True,
-                 save_full_final_decomp=True, show_scree_plot=True):
+                 save_full_final_decomp=True):
         """
         Paramters
         ---------
@@ -27,7 +27,6 @@ class Jive(object):
 
         save_full_final_decomp: whether or not to save the I, J, E final decomposition matrices
 
-        show_scree_plot: show the scree plot of the initial SVD
         """
         # TODO: rename wedin_estimate to use_wedin_estimate
         self.K = len(blocks)  # number of blocks
@@ -54,10 +53,6 @@ class Jive(object):
 
         # stores initial svs for each block
         self.initial_svs = [self.blocks[k].sv for k in range(self.K)]
-
-        # scree plot to decide on signal ranks
-        if show_scree_plot:
-            self.scree_plot()
 
         self.wedin_estimate = wedin_estimate
 

@@ -27,15 +27,13 @@ class AjiveFig2(unittest.TestCase):
         blocks = [self.X_obs, self.Y_obs]
         init_svd_ranks = None
         wedin_estimate = True
-        show_scree_plot = False
         save_full_final_decomp = True
 
         # compute JIVE decomposition
         jive = Jive(blocks=blocks,
                     init_svd_ranks=init_svd_ranks,
                     wedin_estimate=wedin_estimate,
-                    save_full_final_decomp=save_full_final_decomp,
-                    show_scree_plot=show_scree_plot)
+                    save_full_final_decomp=save_full_final_decomp)
     
         jive.set_signal_ranks([2, 3])  # we know the true ranks
         self.block_estimates = jive.get_block_estimates()

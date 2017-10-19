@@ -23,18 +23,13 @@ class JiveViz(unittest.TestCase):
         blocks = [X_obs, Y_obs]
         init_svd_ranks = None
         wedin_estimate = True
-        show_scree_plot = False
         save_full_final_decomp = True
 
         # compute JIVE decomposition
         self.jive = Jive(blocks=blocks,
                          init_svd_ranks=init_svd_ranks,
                          wedin_estimate=wedin_estimate,
-                         save_full_final_decomp=save_full_final_decomp,
-                         show_scree_plot=show_scree_plot)
-
-
-
+                         save_full_final_decomp=save_full_final_decomp)
 
 
         self.jive.set_signal_ranks([2, 3])  # we know the true ranks

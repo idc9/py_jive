@@ -27,8 +27,7 @@ class JiveOptions(unittest.TestCase):
         jive = Jive(blocks,
                     init_svd_ranks=None,
                     wedin_estimate=True,
-                    save_full_final_decomp=True,
-                    show_scree_plot=True)
+                    save_full_final_decomp=True)
 
         jive.set_signal_ranks([2, 3])
         block_estimates = jive.get_block_estimates()
@@ -37,8 +36,7 @@ class JiveOptions(unittest.TestCase):
         jive = Jive(blocks,
                     init_svd_ranks=None,
                     wedin_estimate=True,
-                    save_full_final_decomp=True,
-                    show_scree_plot=False)
+                    save_full_final_decomp=True)
 
         jive.set_signal_ranks([2, 3])
         block_estimates = jive.get_block_estimates()
@@ -46,8 +44,7 @@ class JiveOptions(unittest.TestCase):
 
         jive = Jive(blocks, init_svd_ranks=None,
                     wedin_estimate=False,
-                    save_full_final_decomp=True,
-                    show_scree_plot=False)
+                    save_full_final_decomp=True)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
         block_estimates = jive.get_block_estimates()
@@ -56,8 +53,7 @@ class JiveOptions(unittest.TestCase):
         jive = Jive(blocks,
                     init_svd_ranks=None,
                     wedin_estimate=False,
-                    save_full_final_decomp=False,
-                    show_scree_plot=False)
+                    save_full_final_decomp=False)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
         block_estimates = jive.get_block_estimates()
@@ -71,8 +67,7 @@ class JiveOptions(unittest.TestCase):
         jive = Jive(self.blocks,
                     init_svd_ranks=None,
                     wedin_estimate=False,
-                    save_full_final_decomp=True,
-                    show_scree_plot=False)
+                    save_full_final_decomp=True)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
         full_block_estimates = jive.get_block_estimates_full()
@@ -107,8 +102,7 @@ class JiveOptions(unittest.TestCase):
         jive = Jive(self.blocks,
                     init_svd_ranks=None,
                     wedin_estimate=False,
-                    save_full_final_decomp=False,
-                    show_scree_plot=False)
+                    save_full_final_decomp=False)
         jive.set_signal_ranks([2, 3])
         jive.set_joint_rank(joint_rank=1)
         block_estimates = jive.get_block_estimates()

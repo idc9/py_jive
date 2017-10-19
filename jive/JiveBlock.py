@@ -8,9 +8,9 @@ from scipy.sparse import issparse
 from scipy.sparse.linalg import svds
 from scipy.linalg import svd as full_svd
 
-from aug_sparse.PPtS import PPtS
-from aug_sparse.I_PPtS import I_PPtS
-from aug_sparse.AugmentedSparseMatrix import is_aug_sparse_matrix
+from lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
+from lazymatpy.interface import LinearOperator
+from lazymatpy.convert2scipy import convert2scipy
 
 class JiveBlock(object):
 
@@ -224,7 +224,7 @@ def get_block_joint_space(X, joint_scores, save_full_final_decomp=True):
     """
 
     if issparse(X): # lazy evaluation for sparse matrices
-        J = PPtS(X, joint_scores)
+        J = col_proj(X, joint_scores)
     else:
         J = np.dot(joint_scores, np.dot(joint_scores.T, X))
 
@@ -262,7 +262,7 @@ def get_block_individual_space(X, joint_scores, sv_threshold,
 
     # project columns of X onto orthogonal complement to joint_scores
     if issparse(X):  # lazy evaluation for sparse matrices
-        I = I_PPtS(X, joint_scores)
+        I = col_proj_orthog(X, joint_scores)
     else:
         I = X - np.dot(joint_scores, np.dot(joint_scores.T, X))
 
@@ -306,17 +306,19 @@ def svd_wrapper(X, rank = None):
     the COLUMNS of V are the left singular vectors
 
     """
-    if is_aug_sparse_matrix(X):
-        scipy_svds = svds(X.as_linear_operator(), rank)
+    if isinstance(X, LinearOperator):
+        scipy_svds = svds(convert2scipy(X), rank)
         U, D, V = fix_scipy_svds(scipy_svds)
         V = V.T
-    
-    elif issparse(X):
+
+
+    if issparse(X):
         scipy_svds = svds(X, rank)
         U, D, V = fix_scipy_svds(scipy_svds)
         V = V.T
         
-    else:
+    else: # TODO: can probably use svds for both
+
         U, D, V = full_svd(X, full_matrices=False)
         V = V.T
 
