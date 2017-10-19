@@ -8,9 +8,9 @@ from scipy.sparse import issparse
 from scipy.sparse.linalg import svds
 from scipy.linalg import svd as full_svd
 
-from lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
-from lazymatpy.interface import LinearOperator
-from lazymatpy.convert2scipy import convert2scipy
+from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
+from jive.lazymatpy.interface import LinearOperator
+from jive.lazymatpy.convert2scipy import convert2scipy
 
 class JiveBlock(object):
 

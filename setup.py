@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 def readme():
@@ -15,7 +15,7 @@ setup(name='jive',
       author='Iain Carmichael',
       author_email='idc9@cornell.edu',
       license='MIT',
-      packages=['jive'],
+      packages=find_packages(),
       install_requires=install_requires,
       test_suite='nose.collector',
       tests_require=['nose'],
