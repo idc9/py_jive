@@ -52,6 +52,7 @@ Example
 
     # fit JIVE
     jive = Jive(blocks, wedin_estimate=True)
+    jive.scree_plots()
     jive.set_signal_ranks([2, 3]) # select signal ranks based on scree plot
 
     block_estimates = jive.get_block_estimates()
