@@ -206,7 +206,7 @@ class Jive(object):
 
         # final decomposotion
         for k in range(self.K):
-            self.blocks[k].compute_final_decomposition(self.joint_scores, save_full_estimate, individual_ranks[k])
+            self.blocks[k].compute_final_decomposition(self.joint_scores, individual_ranks[k], save_full_estimate)
 
 
     def estimate_jive_spaces_wedin_bound(self, reconsider_joint_components=True,

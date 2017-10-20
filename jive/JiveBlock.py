@@ -81,7 +81,7 @@ class JiveBlock(object):
                                            D=self.sv,
                                            V=self.loadings,
                                            rank=self.signal_rank,
-                                           num_samples=num_resamples,
+                                           num_samples=num_samples,
                                            quantile=quantile)
 
         # TODO: maybe give user option to kill these
@@ -91,7 +91,7 @@ class JiveBlock(object):
         #    self.sv = None
 
     def compute_final_decomposition(self, joint_scores, individual_rank=None,
-                                   save_full_estimate=False, kill_X=False):
+                                   save_full_estimate=False):
         """
         Compute the JIVE decomposition of the block.
 
@@ -103,6 +103,7 @@ class JiveBlock(object):
 
         save_full_estimate: whether or not to save the full I, J, E matrices
         """
+
         self.save_full_estimate = save_full_estimate
 
         self.estimate_joint_space(joint_scores)
@@ -274,7 +275,7 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
         I = X - np.dot(joint_scores, np.dot(joint_scores.T, X))
 
 
-    if individual_rank is  None:
+    if individual_rank is None:
         # SVD of projected matrix
         # TODO: better bound on rank
         # TODO: maybe make this incremental i.e. compute rank R svd,
