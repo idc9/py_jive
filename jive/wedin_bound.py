@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.utils.extmath import safe_sparse_dot
 
 
-def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
+def get_wedin_bound(X, U, D, V, rank, num_samples=1000, quantile='median'):
     """
     Computes the wedin bound using the resampling procedure described in
     the AJIVE paper.
@@ -13,7 +13,12 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
     U, D, V: the SVD of X
     rank: the rank of the signal space
     num_samples: number of saples for resampling procedure
+    quantile: TODO desc, implement this
     """
+
+    # TODO: implement this
+    if quantile != 'median':
+        raise NotImplemented
 
     # resample for U and V
     U_sampled_norms = resampled_wedin_bound(X=X.T,
@@ -38,7 +43,7 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000):
     return wedin_bound_est
 
 
-def resampled_wedin_bound(X, orthogonal_basis, rank, num_samples=1000):
+def resampled_wedin_bound(X, orthogonal_basis, rank, num_samples=1000, quantile='median'):
     """
     Resampling procedure described in AJIVE paper for Wedin bound
 

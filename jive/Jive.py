@@ -3,32 +3,19 @@ from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .lin_alg_fun import get_svd
-from .JiveBlock import JiveBlock
+from jive.lin_alg_fun import svd_wrapper
+from jive.JiveBlock import JiveBlock
 
 
 class Jive(object):
 
-    def __init__(self, blocks, init_svd_ranks=None, wedin_estimate=True,
-                 save_full_final_decomp=True):
+    def __init__(self, blocks):
         """
         Paramters
         ---------
         Blocks: a list of data matrices
 
-        init_svd_ranks: (optional) list of ranks of the first SVD for each data
-        block -- should be larger than the signal rank.
-        A value of None will compute the full SVD. Sparse data matrices require
-        a value for init_svd_ranks. 
-
-        wedin_estimate: use the wedin bound to estimate the joint space
-        (True/False) if False then the user has to manually set the joint space
-        rank
-
-        save_full_final_decomp: whether or not to save the I, J, E final decomposition matrices
-
         """
-        # TODO: rename wedin_estimate to use_wedin_estimate
         self.K = len(blocks)  # number of blocks
 
         self.n = blocks[0].shape[0]  # number of observation
@@ -38,24 +25,33 @@ class Jive(object):
 
         self.dimensions = [blocks[k].shape[1] for k in range(self.K)]
 
-        if init_svd_ranks is None:  # Set every block to None by default
+        # initialize blocks
+        self.blocks = []
+        for k in range(self.K):
+            self.blocks.append(JiveBlock(blocks[k], 'block ' + str(k + 1)))
+
+
+    def compute_initial_svd(self, init_svd_ranks=None):
+        """
+        Compute initial SVD for each block
+
+        init_svd_ranks: list of ranks of the first SVD for each data
+        block -- should be larger than the signal rank.
+        A value of None will compute the full SVD. Sparse data matrices require
+        a value for init_svd_ranks, otherwise this is optional.
+
+        """
+
+        if init_svd_ranks is None:
             init_svd_ranks = [None] * self.K
         elif len(init_svd_ranks) != self.K:
             raise ValueError("Must provide each block a value for init_svd_ranks (or set it to None)")
 
-        # initialize blocks
-        self.blocks = []
         for k in range(self.K):
-            self.blocks.append(JiveBlock(blocks[k],
-                                         init_svd_ranks[k],
-                                         save_full_final_decomp,
-                                         'block ' + str(k + 1)))
+            self.blocks[k].initial_svd(init_svd_ranks[k])
 
         # stores initial svs for each block
         self.initial_svs = [self.blocks[k].sv for k in range(self.K)]
-
-        self.wedin_estimate = wedin_estimate
-
 
     def scree_plots(self, log=False, diff=False):
         """
@@ -75,20 +71,31 @@ class Jive(object):
         for k in range(self.K):
             self.blocks[k].set_signal_rank(signal_ranks[k])
 
-        # possibly estimate joint space
-        if self.wedin_estimate:
-            self.estimate_joint_space_wedin_bound()
 
-    def estimate_joint_space_wedin_bound(self):
+    def compute_joint_svd(self):
+        
+        # SVD on joint scores matrx
+        joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
+        self.joint_scores, self.joint_sv, self.joint_loadings =  svd_wrapper(joint_scores_matrix)
+
+
+    def compute_wedin_bound(self, num_samples=1000, quantile='median'):
         """
         Estimate joint score space and compute final decomposition
         - SVD on joint scores matrix
         - find joint rank using wedin bound threshold
+
+
+        Parameters
+        ----------
+        num_samples: number of columns to resample for wedin bound
+
+        quantile: for wedin bound TODO better description
         """
 
-        # compute wedin bounds
+        # compute wedin bound for each block
         for k in range(self.K):
-            self.blocks[k].compute_wedin_bound()
+            self.blocks[k].compute_wedin_bound(num_samples, quantile)
 
         wedin_bounds = [self.blocks[k].wedin_bound for k in range(self.K)]
 
@@ -100,55 +107,44 @@ class Jive(object):
         else:
             joint_sv_bound = self.K - sum([b ** 2 for b in wedin_bounds])
 
-        # SVD on joint scores matrx
-        joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
-        self.joint_scores, self.joint_sv, self.joint_loadings =  get_svd(joint_scores_matrix)
 
         # estimate joint rank with wedin bound
         if self.K == 2:
             principal_angles = np.array([np.arccos(d ** 2 - 1) for d in self.joint_sv]) * (180.0/np.pi)
-            self.joint_rank = sum(principal_angles < phi_est)
+            joint_rank_wedin_estimate = sum(principal_angles < phi_est)
         else:
-            self.joint_rank = sum(self.joint_sv ** 2 > joint_sv_bound)
+            joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > joint_sv_bound)
 
-        # select basis for joint space
-        self.joint_scores = self.joint_scores[:, 0:self.joint_rank]
-        self.joint_loadings = self.joint_loadings[:, 0:self.joint_rank]
-        self.joint_sv = self.joint_sv[0:self.joint_rank]
 
-        # possibly remove columns
-        self.reconsider_joint_components()
+        self.wedin_bounds = wedin_bounds
+        self.joint_rank_wedin_estimate = joint_rank_wedin_estimate
 
-        # can now compute final decomposotions
-        self.compute_final_decomposition()
 
-    def set_joint_rank(self, joint_rank):
+    def set_joint_rank(self, joint_rank, reconsider_joint_components=False):
         """
-        Manualy set the joint space rank
+        Sets the joint rank
 
         Paramters
         ---------
         joint_rank: user selected rank of the estimated joint space
+
+        reconsider_joint_components: whether or not to remove columns not satisfying
+        identifiability constraint
         """
 
-        self.joint_rank = joint_rank
+        if not hasattr(self, 'joint_scores'):
+            raise ValueError('please run compute_joint_svd before setting joint rank')
 
-        # TODO: this could be a K-SVD not a full SVD
-        joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
-        self.joint_scores, self.joint_sv, self.joint_loadings =  get_svd(joint_scores_matrix)
+        self.joint_rank = joint_rank
 
         # select basis for joint space
         self.joint_scores = self.joint_scores[:, 0:self.joint_rank]
         self.joint_loadings = self.joint_loadings[:, 0:self.joint_rank]
         self.joint_sv = self.joint_sv[0:self.joint_rank]
 
-        # TODO: add this as an option
-        # # possibly remove some columns
-        # if reconsider_joint_components:
-        #     self.reconsider_joint_components()
-
-        # can now compute final decomposotions
-        self.compute_final_decomposition()
+        # possibly remove some columns
+        if reconsider_joint_components:
+            self.reconsider_joint_components()
 
     def reconsider_joint_components(self):
         """
@@ -179,14 +175,71 @@ class Jive(object):
 
         if self.joint_rank == 0:
             # TODO: how to handle this situation?
-            print('warning all joint signals removed')
+            print('warning all joint signals removed!')
 
-    def compute_final_decomposition(self):
+    def compute_block_specific_spaces(self, save_full_estimate=False, individual_ranks=None):
+        """
+        Computes final decomposition and estimates for block specific
+        joint and individual space
+
+        Parameters
+        ----------
+        save_full_estimate: whether or not to save the full I, J, E matrices
+
+        individual_ranks: gives user option to specify individual ranks. 
+        Either a list of length K or None. Setting an entry equal to None
+        will cause that block to estimate its individual rank.
+
+        """
+
+
+        if individual_ranks is None:
+            individual_ranks = [None] * self.K
+        elif len(individual_ranks) != self.K:
+            raise ValueError("Must provide each block a value for individual_ranks (or set it to None)")
+
+        if not hasattr(self, 'joint_scores'):
+            raise ValueError('please run compute_joint_svd')
+
+        if not hasattr(self, 'joint_rank'):
+            raise ValueError('please set the joint rank.')
+
         # final decomposotion
         for k in range(self.K):
-            self.blocks[k].final_decomposition(self.joint_scores)
+            self.blocks[k].compute_final_decomposition(self.joint_scores, save_full_estimate, individual_ranks[k])
 
-    def get_jive_estimates(self):
+
+    def estimate_jive_spaces_wedin_bound(self, reconsider_joint_components=True,
+                                         save_full_estimate=False,
+                                         num_samples=1000,
+                                         quantile='median'):
+        """ 
+        Computes wedin bound, set's joint rank from wedin bound estimate, then
+        computes final decomposition
+
+        Parameters
+        ----------
+        reconsider_joint_components: whether or not to remove columns not satisfying
+        identifiability constraint
+
+        save_full_estimate: whether or not to save the full I, J, E matrices
+
+        num_samples: number of columns to resample for wedin bound
+
+        quantile: for wedin bound TODO better description
+        """
+        self.compute_joint_svd()
+
+        self.compute_wedin_bound(num_samples, quantile)
+
+        self.set_joint_rank(self.joint_rank_wedin_estimate,
+                            reconsider_joint_components)
+
+        self.compute_block_specific_spaces(save_full_estimate)
+
+
+
+    def get_block_specific_estimates(self):
         """
         Returns the jive decomposition for each data block. We can decomose
         the full data matix as
@@ -207,9 +260,10 @@ class Jive(object):
         'individual' with 'joint'. Similarly you can replace 'full' with
         'scores', 'sing_vals', 'loadings', 'rank'
         """
-        return [self.blocks[k].get_jive_estimates() for k in range(self.K)]
 
-    def get_joint_space_estimate(self):
+        return [self.blocks[k].get_block_estimates() for k in range(self.K)]
+
+    def get_common_joint_space_estimate(self):
         """"
         Returns the SVD of the concatonated scores matrix.
         """
@@ -218,22 +272,8 @@ class Jive(object):
                 'loadings': self.joint_loadings,
                 'rank': self.joint_rank}
 
-    def get_block_estimates(self):
-        """
-        Returns the jive decomposition for each data block.
 
-        Output
-        ------
-        a list of block JIVE estimates which have the following structure
-
-        estimates[k]['individual']['full'] returns the full individual estimate
-        for the kth data block (this is the I matrix). You can replace
-        'individual' with 'joint'. Similarly you can replace 'full' with
-        'scores', 'sing_vals', 'loadings', 'ranks'
-        """
-        return [self.blocks[k].get_jive_estimates() for k in range(self.K)]
-
-    def get_block_estimates_full(self):
+    def get_block_full_estimates(self):
         """
         Returns the jive decomposition for each data block. Note of full=False
         you can only run this method onces because it will kill each X matrix.
@@ -243,5 +283,5 @@ class Jive(object):
         a list of the full block estimates (I, J, E) i.e. estimates[k]['J']
         """
         # TODO: give the option to return only some of I, J and E
-        return [self.blocks[k].get_full_jive_estimates()
+        return [self.blocks[k].get_full_estimates()
                 for k in range(self.K)]

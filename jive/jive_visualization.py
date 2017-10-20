@@ -18,19 +18,18 @@ def plot_data_blocks(blocks):
         plt.title('block ' + str(k))
 
 
-def plot_jive_full_estimates(jive):
+def plot_jive_full_estimates(full_block_estimates, blocks):
     """
     Plots the full JVIE estimates: X, J, I, E
     """
-    num_blocks = jive.K
-    full_block_estimates = jive.get_block_estimates_full()
+    num_blocks = len(full_block_estimates)
 
     plt.figure(figsize=[10, num_blocks * 10])
 
     for k in range(num_blocks):
 
         # grab data
-        X = jive.blocks[k].X
+        X = blocks[k]
         J = full_block_estimates[k]['J']
         I = full_block_estimates[k]['I']
         E = full_block_estimates[k]['E']

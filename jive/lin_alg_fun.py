@@ -1,81 +1,76 @@
 import numpy as np
+
+from scipy.sparse import issparse
+from scipy.sparse.linalg import svds
+from scipy.linalg import svd as full_svd
+
 import matplotlib.pyplot as plt
 
+from jive.lazymatpy.interface import LinearOperator
+from jive.lazymatpy.convert2scipy import convert2scipy
 
-def projection_matrix(X):
+def svd_wrapper(X, rank = None):
     """
-    Returns the projection matrix of X
-
-    P = X(X^T X)^{-1}X^T
-
-    i.e. Pv projects v onto the columns of X
-    """
-    # TODO: kill this
-    if len(X.shape) == 1:  # x is a vector
-        return np.outer(X, X)
-    else:
-        return np.dot(np.dot(X, np.linalg.inv(np.dot(X.T, X))), X.T)
-
-# TODO: kill this
-# def orthogonal_projection_matrix(X):
-#     """
-#     Returns the orthogonal projection matrix of X
-#
-#     P_ortho = I - X(X^T X)^{-1}X^T
-#
-#     i.e. Pv projects v onto the orthogonal complement of the columns of X
-#     """
-#     if len(X.shape) == 1:  # x is a vector
-#         return np.eye(len(X)) - np.outer(X, X)
-#     else:
-#         return np.eye(X.shape[0]) - projection_matrix(X)
-
-
-def get_svd(X):
-    """
-    Returns the SVD from numpy
-    (does a bit of reformatting on np.linalg.svd)
-
-    X = U D V^T
-
+    Computes the (possibly partial) SVD of a matrix. Handles the case where
+    X is either dense or sparse.
+    
     Parameters
-    ---------
-    X: and n x d numpy matrix
+    ----------
+    X: either dense or sparse
+    rank: rank of the desired SVD (required for sparse matrices)
 
     Output
     ------
-    (let m = min(n, d))
+    U, D, V
+    the columns of U are the left singular vectors
+    the COLUMNS of V are the left singular vectors
 
-    U: n x d
-    D: list of length m
-    V: m x d
-
-    >>> U, D, V = get_numpy_svd(X)
-    >>> np.allclose(X, np.dot(U, np.dot(np.diag(D), V.T)))
-    True
     """
-    # TODO: kill this helper function
-    U, d, V_T = np.linalg.svd(X, full_matrices=False)
-    return U, d, V_T.T
+    if isinstance(X, LinearOperator):
+        scipy_svds = svds(convert2scipy(X), rank)
+        U, D, V = fix_scipy_svds(scipy_svds)
+        V = V.T
+
+    elif issparse(X):
+        scipy_svds = svds(X, rank)
+        U, D, V = fix_scipy_svds(scipy_svds)
+        V = V.T
+        
+    else: # TODO: can probably use svds for both
+
+        U, D, V = full_svd(X, full_matrices=False)
+        V = V.T
+
+    if rank:
+        U = U[:, :rank]
+        D = D[:rank]
+        V = V[:, :rank]
+        
+    return U, D, V
 
 
-def svd_approx(U, D, V, r):
+def fix_scipy_svds(scipy_svds):
     """
-    Returns the rank r SVD approximation
-
-    X approx U D V.T
-
+    scipy.sparse.linalg.svds orders the singular values backwards,
+    this function fixes this insanity and returns the singular values
+    in decreasing order
+    
     Parameters
     ----------
-    (let m = min(n, d))
-    U: n x d
-    D: list of length m
-    V: m x d
-
-    r: rank of desiered approximation
+    scipy_svds: the out put from scipy.sparse.linalg.svds
+    
+    Output
+    ------
+    U, D, V
+    ordered in decreasing singular values
     """
-    # TODO: kill this helper function
-    return np.dot(U[:, 0:r], np.dot(np.diag(D[0:r]), V[:, 0:r].T))
+    U, D, V = scipy_svds
+
+    U = U[:, ::-1]
+    D = D[::-1]
+    V = V[::-1, :]
+
+    return U, D, V
 
 
 def scree_plot(sv, log=False, diff=False, title=''):
