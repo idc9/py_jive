@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.utils.extmath import safe_sparse_dot
 
-
+# TODO: modify wedin bound procedure for sparse matrices
 def get_wedin_bound(X, U, D, V, rank, num_samples=1000, quantile='median'):
     """
     Computes the wedin bound using the resampling procedure described in

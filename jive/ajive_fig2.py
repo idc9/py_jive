@@ -23,7 +23,7 @@ def generate_data_ajive_fig2(seed=None):
 
     X_indiv = 5000 * np.bmat([[-1 * np.ones((25, 100))],
                               [np.ones((25, 100))],
-                              [-1*np.ones((25, 100))],
+                              [-1 * np.ones((25, 100))],
                               [np.ones((25, 100))]])
 
     X_noise = 5000 * np.random.normal(loc=0, scale=1, size=(100, 100))
@@ -36,13 +36,13 @@ def generate_data_ajive_fig2(seed=None):
     Y_joint = np.bmat([np.zeros((100, 8000)), Y_joint])
 
     Y_indiv_t = np.bmat([[np.ones((20, 5000))],
-                        [-1*np.ones((20, 5000))],
+                        [-1 * np.ones((20, 5000))],
                         [np.zeros((20, 5000))],
                         [np.ones((20, 5000))],
-                        [-1*np.ones((20, 5000))]])
+                        [-1 * np.ones((20, 5000))]])
 
     Y_indiv_b = np.bmat([[np.ones((25, 5000))],
-                        [-1*np.ones((50, 5000))],
+                        [-1 * np.ones((50, 5000))],
                         [np.ones((25, 5000))]])
 
     Y_indiv = np.bmat([Y_indiv_t, Y_indiv_b])
