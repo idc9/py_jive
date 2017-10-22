@@ -18,6 +18,8 @@ class Jive(object):
         """
         self.K = len(blocks)  # number of blocks
 
+        # TODO: maybe convert blocks to ndarray
+
         self.n = blocks[0].shape[0]  # number of observation
         for k in range(self.K):  # chack observation consistency
             if self.n != blocks[k].shape[0]:
