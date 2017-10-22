@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from jive.wedin_bound import get_wedin_bound
+from jive.wedin_bound_sample_project import get_wedin_bound_sample_project
+from jive.wedin_bound_svec_resampling import get_wedin_bound_svec_resampling
 from jive.lin_alg_fun import scree_plot
 
 from scipy.sparse import issparse
@@ -68,24 +69,49 @@ class JiveBlock(object):
         self.signal_basis = self.scores[:, 0:self.signal_rank]
 
 
-    def compute_wedin_bound(self, num_samples=1000, quantile='median'):
+    def compute_wedin_bound(self, sampling_procedure=None, num_samples=1000, quantile='median'):
         """
         Computes the block wedin bound
 
         Parameters
         ----------
+        sampling_procedure: how to sample vectors from space orthognal to signal subspace
+        ['svec_resampling' or 'sample_project']. If X is sparse the must use sample_project since
+        svec_resampling requires the fulll SVD. If None then will use 'svec_resampling' for dense
+        and 'sample_project' for sparse
+
         num_samples: number of columns to resample for wedin bound
 
         quantile: for wedin bound TODO better description
         """
-        # use resampling to compute wedin bound estimate
-        self.wedin_bound = get_wedin_bound(X=self.X,
-                                           U=self.scores,
-                                           D=self.sv,
-                                           V=self.loadings,
-                                           rank=self.signal_rank,
-                                           num_samples=num_samples,
-                                           quantile=quantile)
+        if sampling_procedure is None:
+            if issparse(self.X):
+                sampling_procedure ='sample_project'
+            else:
+                sampling_procedure ='svec_resampling'
+
+        if issparse(self.X) and (sampling_procedure == 'svec_resampling'):
+            raise ValueError('sparse matrices require sample_project because the full SVD is not computed')
+
+        if sampling_procedure == 'svec_resampling':
+            self.wedin_bound = get_wedin_bound_svec_resampling(X=self.X,
+                                                               U=self.scores,
+                                                               D=self.sv,
+                                                               V=self.loadings,
+                                                               rank=self.signal_rank,
+                                                               num_samples=num_samples,
+                                                               quantile=quantile)
+
+        elif sampling_procedure == 'sample_project':
+            self.wedin_bound = get_wedin_bound_sample_project(X=self.X,
+                                                              U=self.scores,
+                                                              D=self.sv,
+                                                              V=self.loadings,
+                                                              rank=self.signal_rank,
+                                                              num_samples=num_samples,
+                                                              quantile=quantile)
+        else:
+            raise ValueError('sampling_procedure must be one of svec_resampling or sample_project')
 
         # TODO: maybe give user option to kill these
         # if kill_init_svd:
@@ -130,24 +156,30 @@ class JiveBlock(object):
         """
         Estimate the block's joint space
         """
-        self.J, self.block_joint_scores,  self.block_joint_sv, \
-        self.block_joint_loadings = estimate_joint_space(X=self.X,
-                                                          joint_scores=joint_scores,
-                                                          save_full_estimate=self.save_full_estimate)
+        if joint_scores.shape[1] == 0:
+            self.J = np.array([])
+            self.block_joint_scores = np.array([])
+            self.block_joint_sv = np.array([])
+            self.block_joint_loadings = np.array([])
+
+        else:
+            self.J, self.block_joint_scores, self.block_joint_sv, \
+            self.block_joint_loadings = estimate_joint_space(X=self.X,
+                                                             joint_scores=joint_scores,
+                                                             save_full_estimate=self.save_full_estimate)
 
     def estimate_individual_space(self, joint_scores, individual_rank=None):
         """
         Estimate the block's individual space
         """
 
-        self.I, self.block_individual_scores, \
-            self.block_individual_sv, self.block_individual_loadings = \
-            estimate_individual_space(X=self.X,
-                                      joint_scores=joint_scores,
-                                      sv_threshold=self.sv_threshold,
-                                      individual_rank=individual_rank,
-                                      init_svd_rank=self.init_svd_rank,
-                                      save_full_estimate=self.save_full_estimate)
+        self.I, self.block_individual_scores, self.block_individual_sv, \
+            self.block_individual_loadings = estimate_individual_space(X=self.X,
+                                                                       joint_scores=joint_scores,
+                                                                       sv_threshold=self.sv_threshold,
+                                                                       individual_rank=individual_rank,
+                                                                       init_svd_rank=self.init_svd_rank,
+                                                                       save_full_estimate=self.save_full_estimate)
 
     def get_block_estimates(self):
         """
@@ -272,12 +304,14 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
     """
 
     # project columns of X onto orthogonal complement to joint_scores
-    if issparse(X):  # lazy evaluation for sparse matrices
+    if joint_scores.shape[1] == 0:
+        I = X
+    elif issparse(X):  # lazy evaluation for sparse matrices
         I = col_proj_orthog(X, joint_scores)
     else:
         I = X - np.dot(joint_scores, np.dot(joint_scores.T, X))
 
-
+    # estimate individual rank
     if individual_rank is None:
         # SVD of projected matrix
         # TODO: better bound on rank
@@ -286,7 +320,7 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
         # R + 1 svd, etc 
         max_rank = min(X.shape) - joint_scores.shape[1]
         if init_svd_rank is not None:
-            max_rank = min(init_svd_rank, max_rank )
+            max_rank = min(init_svd_rank, max_rank)
 
         scores, sv, loadings = svd_wrapper(I, max_rank)
 

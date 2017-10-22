@@ -1,11 +1,10 @@
 import numpy as np
 from sklearn.utils.extmath import safe_sparse_dot
 
-# TODO: modify wedin bound procedure for sparse matrices
-def get_wedin_bound(X, U, D, V, rank, num_samples=1000, quantile='median'):
+def get_wedin_bound_svec_resampling(X, U, D, V, rank, num_samples=1000, quantile='median'):
     """
     Computes the wedin bound using the resampling procedure described in
-    the AJIVE paper.
+    the AJIVE paper. This procedure requires the full SVD of X.
 
     Parameters
     ----------
@@ -21,12 +20,12 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000, quantile='median'):
         raise NotImplemented
 
     # resample for U and V
-    U_sampled_norms = resampled_wedin_bound(X=X.T,
+    U_sampled_norms = norms_svec_resampling(X=X.T,
                                             orthogonal_basis=U[:, rank:],
                                             rank=rank,
                                             num_samples=num_samples)
 
-    V_sampled_norms = resampled_wedin_bound(X=X,
+    V_sampled_norms = norms_svec_resampling(X=X,
                                             orthogonal_basis=V[:, rank:],
                                             rank=rank,
                                             num_samples=num_samples)
@@ -43,7 +42,7 @@ def get_wedin_bound(X, U, D, V, rank, num_samples=1000, quantile='median'):
     return wedin_bound_est
 
 
-def resampled_wedin_bound(X, orthogonal_basis, rank, num_samples=1000, quantile='median'):
+def norms_svec_resampling(X, orthogonal_basis, rank, num_samples=1000):
     """
     Resampling procedure described in AJIVE paper for Wedin bound
 
@@ -56,14 +55,14 @@ def resampled_wedin_bound(X, orthogonal_basis, rank, num_samples=1000, quantile=
 
     rank: number of columns to resample
 
-    right_vectors: multiply right or left of data matrix (True/False)
-
     num_samples: how many resamples
 
     Output
     ------
     an array of the resampled norms
     """
+    # TODO: rename some arguments e.g. orthogonal_basis -- this is not really
+    # a basis, also resampled_projection
 
     resampled_norms = [0]*num_samples
 
@@ -80,7 +79,7 @@ def resampled_wedin_bound(X, orthogonal_basis, rank, num_samples=1000, quantile=
         resampled_projection = safe_sparse_dot(X, resampled_basis)
 
 
-        # compute resampled operator L2 nrm
+        # compute resampled operator L2 norm
         resampled_norms[s] = np.linalg.norm(resampled_projection, ord=2)
 
     return resampled_norms

@@ -46,8 +46,6 @@ class Jive(object):
 
         if init_svd_ranks is None:
             init_svd_ranks = [None] * self.K
-        elif len(init_svd_ranks) != self.K:
-            raise ValueError("Must provide each block a value for init_svd_ranks (or set it to None)")
 
         for k in range(self.K):
             self.blocks[k].initial_svd(init_svd_ranks[k])
@@ -81,7 +79,7 @@ class Jive(object):
         self.joint_scores, self.joint_sv, self.joint_loadings =  svd_wrapper(joint_scores_matrix)
 
 
-    def compute_wedin_bound(self, num_samples=1000, quantile='median'):
+    def compute_wedin_bound(self, sampling_procedures=None, num_samples=1000, quantile='median'):
         """
         Estimate joint score space and compute final decomposition
         - SVD on joint scores matrix
@@ -90,16 +88,28 @@ class Jive(object):
 
         Parameters
         ----------
+        sampling_procedures: which sampling procedure each block should use. Can
+        be either None or list with entries either 'svec_resampling' or 'sample_project'. 
+        If None the will defer use svec_resampling for dense matrices and sample_project for sparse matrices.
+
         num_samples: number of columns to resample for wedin bound
 
         quantile: for wedin bound TODO better description
         """
 
+        # TODO: think more about behaviour of sampling_procedures
+
+        if sampling_procedures is None:
+            sampling_procedures = [None] * self.K
+
         # compute wedin bound for each block
         for k in range(self.K):
-            self.blocks[k].compute_wedin_bound(num_samples, quantile)
+            self.blocks[k].compute_wedin_bound(sampling_procedures[k], num_samples, quantile)
 
         wedin_bounds = [self.blocks[k].wedin_bound for k in range(self.K)]
+
+
+        # TODO: can probbaly kill K=2 case
 
         # threshold for joint space segmentaion
         if self.K == 2:  # if two blocks use angles
@@ -211,8 +221,10 @@ class Jive(object):
             self.blocks[k].compute_final_decomposition(self.joint_scores, individual_ranks[k], save_full_estimate)
 
 
-    def estimate_jive_spaces_wedin_bound(self, reconsider_joint_components=True,
+    def estimate_jive_spaces_wedin_bound(self,
+                                         reconsider_joint_components=True,
                                          save_full_estimate=False,
+                                         sampling_procedures=None,
                                          num_samples=1000,
                                          quantile='median'):
         """ 
@@ -222,9 +234,13 @@ class Jive(object):
         Parameters
         ----------
         reconsider_joint_components: whether or not to remove columns not satisfying
-        identifiability constraint
+        identifiability constraint`
 
         save_full_estimate: whether or not to save the full I, J, E matrices
+
+        sampling_procedures: which sampling procedure each block should use. Can
+        be either None or list with entries either 'svec_resampling' or 'sample_project'
+        If None the will defer use svec_resampling for dense matrices and sample_project for sparse matrices.
 
         num_samples: number of columns to resample for wedin bound
 
@@ -232,13 +248,12 @@ class Jive(object):
         """
         self.compute_joint_svd()
 
-        self.compute_wedin_bound(num_samples, quantile)
+        self.compute_wedin_bound(sampling_procedures, num_samples, quantile)
 
         self.set_joint_rank(self.joint_rank_wedin_estimate,
                             reconsider_joint_components)
 
         self.compute_block_specific_spaces(save_full_estimate)
-
 
 
     def get_block_specific_estimates(self):
