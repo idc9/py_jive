@@ -30,8 +30,7 @@ class JiveBlock(object):
     def initial_svd(self, init_svd_rank):
         """
         SVD for initial signal space extraction
-        """
-        
+        """   
         if issparse(self.X) and (init_svd_rank is None):
             raise ValueError('sparse matrices must have an init_svd_rank')
 
@@ -46,6 +45,10 @@ class JiveBlock(object):
         """
         Plots scree plot for initial SVD
         """
+        if not hasattr(self, 'sv'):
+            raise ValueError('please run initial_svd() before making scree plot')
+
+
         if self.name:
             title = self.name
         else:
