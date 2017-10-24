@@ -70,11 +70,12 @@ def norms_sample_project(X, B, rank, num_samples=1000):
     for s in range(num_samples):
 
         # sample from isotropic distribution
-        # TODO: maybe uniform?
-        vecs = np.random.normal(size=(dim, rank))
+        # TODO: uniform or normal?
+        vecs = np.random.uniform(size=(dim, rank))
 
         # project onto space orthogonal to cols of B
-        vecs = (np.eye(dim) - np.dot(B, B.T)).dot(vecs)
+        # vecs = (np.eye(dim) - np.dot(B, B.T)).dot(vecs)
+        vecs = vecs - np.dot(B, np.dot(B.T, vecs))
 
         # normalize vectors
         vecs = np.vstack([unit_vector(vecs[:, c]) for c in range(vecs.shape[1])]).T
