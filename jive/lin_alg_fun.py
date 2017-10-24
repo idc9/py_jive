@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 from jive.lazymatpy.interface import LinearOperator
 from jive.lazymatpy.convert2scipy import convert2scipy
+from jive.lazymatpy.templates.matrix_transformations import svd_residual
 
 def svd_wrapper(X, rank = None):
     """
@@ -36,15 +37,15 @@ def svd_wrapper(X, rank = None):
         U, D, V = fix_scipy_svds(scipy_svds)
         V = V.T
         
-    else: # TODO: can probably use svds for both
-
+    else:
+        # TODO: implement partial SVD
         U, D, V = full_svd(X, full_matrices=False)
         V = V.T
 
-    if rank:
-        U = U[:, :rank]
-        D = D[:rank]
-        V = V[:, :rank]
+        if rank:
+            U = U[:, :rank]
+            D = D[:rank]
+            V = V[:, :rank]
         
     return U, D, V
 
@@ -72,6 +73,20 @@ def fix_scipy_svds(scipy_svds):
 
     return U, D, V
 
+def svds_additional(A, U_first, D_first, V_first, k):
+    """
+    Computes the next k SVD components given the first several SVD componenets.
+
+    Parametrs
+    ---------
+    A: data matrix
+    U_first, D_first, V_first: first several SVD compoents of A
+    k: how many additional SVD componenets to compute
+    """
+
+    R = svd_residual(A, U_first, D_first, V_first.T)
+    
+    return svd_wrapper(R, k)
 
 def scree_plot(sv, log=False, diff=False, title=''):
     """

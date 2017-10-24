@@ -120,7 +120,7 @@ class JiveBlock(object):
         #    self.sv = None
 
     def compute_final_decomposition(self, joint_scores, individual_rank=None,
-                                   save_full_estimate=False):
+                                    save_full_estimate=False):
         """
         Compute the JIVE decomposition of the block.
 
@@ -147,10 +147,6 @@ class JiveBlock(object):
             self.E = self.X - (self.J + self.I)
         else:
             self.E = np.array([])
-
-        # can give user option to remove X here to save memory
-        # if kill_X:
-        #     self.X = None
 
     def estimate_joint_space(self, joint_scores):
         """
@@ -224,10 +220,17 @@ class JiveBlock(object):
 
             estimates['E'] = self.X - (estimates['I'] + estimates['J'])
 
-            # TODO: I think I can kill this here
-            # self.X = None
-
         return estimates
+
+    def kill_init_svd(self):
+        """
+        Kills initial svd scores/loadings to save memory
+        """
+        # TODO: is this worth adding?
+
+        # self.score = None
+        # self.loadings = None
+        raise NotImplementedError
 
 
 def get_sv_threshold(singular_values, rank):
@@ -326,11 +329,13 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
 
         # compute individual rank
         individual_rank = sum(sv > sv_threshold)
-
-
-    scores = scores[:, 0:individual_rank]
-    sv = sv[0:individual_rank]
-    loadings = loadings[:, 0:individual_rank]
+        
+        scores = scores[:, 0:individual_rank]
+        sv = sv[0:individual_rank]
+        loadings = loadings[:, 0:individual_rank]
+    
+    else:
+        scores, sv, loadings = svd_wrapper(I, individual_rank)
 
     # full block individual representation
     if save_full_estimate:
@@ -338,4 +343,7 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
     else:
         I = np.array([])  # Kill I matrix to save memory
 
+    print(np.allclose(np.dot(loadings.T, loadings), np.eye(loadings.shape[1])))
     return I, scores, sv, loadings
+
+
