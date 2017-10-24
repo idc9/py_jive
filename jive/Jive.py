@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+import os
 
 from jive.lin_alg_fun import svd_wrapper
 from jive.JiveBlock import JiveBlock
@@ -31,6 +33,9 @@ class Jive(object):
         self.blocks = []
         for k in range(self.K):
             self.blocks.append(JiveBlock(blocks[k], 'block ' + str(k + 1)))
+
+        # whether or not JIVE has computed the final decomposition
+        self.has_finished = False
 
 
     def compute_initial_svd(self, init_svd_ranks=None):
@@ -220,6 +225,7 @@ class Jive(object):
         for k in range(self.K):
             self.blocks[k].compute_final_decomposition(self.joint_scores, individual_ranks[k], save_full_estimate)
 
+        self.has_finished = True
 
     def estimate_jive_spaces_wedin_bound(self,
                                          reconsider_joint_components=True,
@@ -255,6 +261,8 @@ class Jive(object):
 
         self.compute_block_specific_spaces(save_full_estimate)
 
+        self.has_finished = True
+
 
     def get_block_specific_estimates(self):
         """
@@ -275,7 +283,7 @@ class Jive(object):
         estimates[k]['individual']['full'] returns the full individual estimate
         for the kth data block (this is the I matrix). You can replace
         'individual' with 'joint'. Similarly you can replace 'full' with
-        'scores', 'sing_vals', 'loadings', 'rank'
+        'scores', 'sing_vals', 'loadings', or 'rank'
         """
 
         return [self.blocks[k].get_block_estimates() for k in range(self.K)]
@@ -284,6 +292,9 @@ class Jive(object):
         """"
         Returns the SVD of the concatonated scores matrix.
         """
+        if not hasattr(self, joint_scores) :
+            raise ValueError('joints space estimation has not yet been computed')
+
         return {'scores': self.joint_scores,
                 'sing_vals': self.joint_sv,
                 'loadings': self.joint_loadings,
@@ -299,6 +310,132 @@ class Jive(object):
         ------
         a list of the full block estimates (I, J, E) i.e. estimates[k]['J']
         """
+        if not self.has_finished:
+            raise ValueError('JIVE has not yet computed block decomposition')
+
         # TODO: give the option to return only some of I, J and E
         return [self.blocks[k].get_full_estimates()
                 for k in range(self.K)]
+
+    def save_estimates(self, fname='', notes='', force=False):
+        """
+        Saves the JIVE estimates
+
+        U, D, V, full, rank for block secific joint/individual spaces
+        U, D, V, rank for common joint space
+        some metadata (when saved, some nots)
+
+        Parameters
+        ----------
+        fname: name of the file
+        notes: any notes you want to include
+        force: whether or note to overwrite a file with the same name
+        """
+
+        if os.path.exists(fname) and (not force):
+            raise ValueError('%s already exists' % fname)
+
+        kwargs = {}
+        svd_dat = ['scores', 'sing_vals', 'loadings', 'rank']
+        kwargs['K'] = self.K
+
+        block_estimates = self.get_block_specific_estimates()
+        for k in range(self.K):
+            for mode in ['joint', 'individual']:
+                for dat in svd_dat + ['full']:
+                    label = '%d_%s_%s' % (k, mode, dat)
+                    kwargs[label] = block_estimates[k][mode][dat]
+
+        common_joint = self.get_common_joint_space_estimate()
+        for dat in svd_dat:
+            kwargs['common_%s' % dat] = common_joint[dat]
+            
+        current_time = time.strftime("%m/%d/%Y %H:%M:%S")
+        kwargs['metadata'] = [current_time, notes]
+
+        np.savez_compressed(fname, **kwargs)
+
+
+    def save_init_svd(self, fname='', notes='', force=False):
+        """
+        Saves the initial SVD so it can be loaded later without recomputing
+
+        Parameters
+        ----------
+        fname: name of the file
+        notes: any notes you want to include
+        force: whether or note to overwrite a file with the same name
+        """
+
+        if not hasattr(self.blocks[0], 'scores'):
+            raise ValueError('initial svd has not yet been computed')
+
+        if os.path.exists(fname) and (not force):
+            raise ValueError('%s already exists' % fname)
+
+        kwargs = {}
+        svd_dat = ['scores', 'sing_vals', 'loadings', 'rank']
+        kwargs['K'] = self.K
+
+        for k in range(self.K):
+            kwargs['%d_scores' % k] = self.blocks[k].scores
+            kwargs['%d_sv' % k] = self.blocks[k].sv
+            kwargs['%d_loadings' % k ] = self.blocks[k].loadings
+            kwargs['%d_init_svd_rank' % k] = self.blocks[k].init_svd_rank
+
+        np.savez_compressed(fname, **kwargs)
+
+    def init_svd_from_saved(self, fname):
+        """
+        Loads the initial SVD from a saved file
+
+        Parameters
+        ----------
+        fname: path to file saved with save_init_svd
+        """
+        saved_data = np.load(fname)
+        K = saved_data['K']
+
+        for k in range(K):
+            self.blocks[k].scores = saved_data['%d_scores' % k]
+            self.blocks[k].sv = saved_data['%d_sv' % k]
+            self.blocks[k].loadings = saved_data['%d_loadings' % k]
+            self.blocks[k].init_svd_rank = saved_data['%d_init_svd_rank' % k]
+
+
+def get_saved_jive_estimates(fname=''):
+    """
+    Returns JIVE estimates that have been saved to disk.
+
+    Parameters
+    ----------
+    fname: name of file saved with jive.save_estimates()
+
+    Output
+    ------
+    block_estimates, common_joint_estimates, metadata
+
+    block_estimates: block specific estimates
+    common_joint_estimates: common joint space
+    metadata: time of save and notes
+    """
+    saved_data = np.load(fname)
+
+    K = saved_data['K']
+    svd_dat = ['scores', 'sing_vals', 'loadings', 'rank']
+    modes = ['joint', 'individual']
+    
+    block_estimates = [{mode: {dat: [] for dat in svd_dat + ['full']} for mode in modes}]
+    for k in range(K):
+        for mode in modes:
+            for dat in svd_dat + ['full']:
+                label = '%d_%s_%s' % (k, mode, dat)
+                block_estimates[k][mode][dat] = saved_data[label]
+
+    common_joint_estimates = {data : [] for dat in svd_dat}
+    for dat in svd_dat:
+        common_joint_estimates[dat] = saved_data['common_%s' % dat]
+
+    metadata = saved_data['meta_data']
+
+    return block_estimates, common_joint_estimates, metadata
