@@ -94,22 +94,22 @@ class JiveBlock(object):
             raise ValueError('sparse matrices require sample_project because the full SVD is not computed')
 
         if sampling_procedure == 'svec_resampling':
-            self.wedin_bound = get_wedin_bound_svec_resampling(X=self.X,
-                                                               U=self.scores,
-                                                               D=self.sv,
-                                                               V=self.loadings,
-                                                               rank=self.signal_rank,
-                                                               num_samples=num_samples,
-                                                               quantile=quantile)
+            self.sin_bound_est = get_wedin_bound_svec_resampling(X=self.X,
+                                                                 U=self.scores,
+                                                                 D=self.sv,
+                                                                 V=self.loadings,
+                                                                 rank=self.signal_rank,
+                                                                 num_samples=num_samples,
+                                                                 quantile=quantile)
 
         elif sampling_procedure == 'sample_project':
-            self.wedin_bound = get_wedin_bound_sample_project(X=self.X,
-                                                              U=self.scores,
-                                                              D=self.sv,
-                                                              V=self.loadings,
-                                                              rank=self.signal_rank,
-                                                              num_samples=num_samples,
-                                                              quantile=quantile)
+            self.sin_bound_est = get_wedin_bound_sample_project(X=self.X,
+                                                                U=self.scores,
+                                                                D=self.sv,
+                                                                V=self.loadings,
+                                                                rank=self.signal_rank,
+                                                                num_samples=num_samples,
+                                                                quantile=quantile)
         else:
             raise ValueError('sampling_procedure must be one of svec_resampling or sample_project')
 

@@ -111,29 +111,14 @@ class Jive(object):
         for k in range(self.K):
             self.blocks[k].compute_wedin_bound(sampling_procedures[k], num_samples, quantile)
 
-        wedin_bounds = [self.blocks[k].wedin_bound for k in range(self.K)]
+        sin_bound_ests = [self.blocks[k].wedin_bound for k in range(self.K)]
+
+        wedin_threshold = self.K - sum([b ** 2 for b in sin_bound_ests])
+
+        joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > threshold)
 
 
-        # TODO: can probbaly kill K=2 case
-
-        # threshold for joint space segmentaion
-        if self.K == 2:  # if two blocks use angles
-            theta_est_1 = np.arcsin(min(wedin_bounds[0], 1))
-            theta_est_2 = np.arcsin(min(wedin_bounds[1], 1))
-            phi_est = np.sin(theta_est_1 + theta_est_2) * (180.0/np.pi)
-        else:
-            joint_sv_bound = self.K - sum([b ** 2 for b in wedin_bounds])
-
-
-        # estimate joint rank with wedin bound
-        if self.K == 2:
-            principal_angles = np.array([np.arccos(d ** 2 - 1) for d in self.joint_sv]) * (180.0/np.pi)
-            joint_rank_wedin_estimate = sum(principal_angles < phi_est)
-        else:
-            joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > joint_sv_bound)
-
-
-        self.wedin_bounds = wedin_bounds
+        self.sin_bound_ests = sin_bound_ests
         self.joint_rank_wedin_estimate = joint_rank_wedin_estimate
 
 
