@@ -1,14 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-from jive.wedin_bound_sample_project import get_wedin_bound_sample_project
-from jive.wedin_bound_svec_resampling import get_wedin_bound_svec_resampling
-from jive.lin_alg_fun import scree_plot
-
+import warnings
 from scipy.sparse import issparse
 
+from jive.wedin_bound_sample_project import get_wedin_bound_sample_project
+from jive.wedin_bound_svd_basis_resampling import get_wedin_bound_svd_basis_resampling
+from jive.lin_alg_fun import scree_plot
+
 from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
-from jive.lin_alg_fun import svd_wrapper
+from jive.lin_alg_fun import svd_wrapper, svds_additional
 
 class JiveBlock(object):
 
@@ -27,6 +27,8 @@ class JiveBlock(object):
         self.d = X.shape[1]
 
         self.name = name
+
+        self.init_svd_rank = None
 
     def initial_svd(self, init_svd_rank):
         """
@@ -62,22 +64,33 @@ class JiveBlock(object):
         """
         self.signal_rank = signal_rank
 
-        # compute singular value threshold
-        self.sv_threshold = get_sv_threshold(self.sv, self.signal_rank)
+        if (self.init_svd_rank is not None) and (signal_rank >= self.init_svd_rank):
+            warnings.warn('init_svd_rank must be at least signal_rank + 1 in order to compute singular value threshold to estimate individual rank. You can proceed without this threshold, but will have to manually select teh individual rank.')
+            
+            # TODO: decide what the behavior should be here
+            # Probably make sv_threshold fail by default, allow user to 
+            # set it themselves
+            sv_threshold = np.nan
+            # sv_threshold = max(self.sv)
+
+
+        else:
+            # compute singular value threshold
+            self.sv_threshold = get_sv_threshold(self.sv, self.signal_rank)
 
         # initial signal space estimate
         self.signal_basis = self.scores[:, 0:self.signal_rank]
 
 
-    def compute_wedin_bound(self, sampling_procedure=None, num_samples=1000, quantile='median'):
+    def compute_wedin_bound(self, sampling_procedure=None, num_samples=1000, quantile='median', qr=True):
         """
         Computes the block wedin bound
 
         Parameters
         ----------
         sampling_procedure: how to sample vectors from space orthognal to signal subspace
-        ['svec_resampling' or 'sample_project']. If X is sparse the must use sample_project since
-        svec_resampling requires the fulll SVD. If None then will use 'svec_resampling' for dense
+        ['svd_resampling' or 'sample_project']. If X is sparse the must use sample_project since
+        svd_resampling requires the fulll SVD. If None then will use 'svd_resampling' for dense
         and 'sample_project' for sparse
 
         num_samples: number of columns to resample for wedin bound
@@ -88,19 +101,19 @@ class JiveBlock(object):
             if issparse(self.X):
                 sampling_procedure ='sample_project'
             else:
-                sampling_procedure ='svec_resampling'
+                sampling_procedure ='svd_resampling'
 
-        if issparse(self.X) and (sampling_procedure == 'svec_resampling'):
+        if issparse(self.X) and (sampling_procedure == 'svd_resampling'):
             raise ValueError('sparse matrices require sample_project because the full SVD is not computed')
 
-        if sampling_procedure == 'svec_resampling':
-            self.sin_bound_est = get_wedin_bound_svec_resampling(X=self.X,
-                                                                 U=self.scores,
-                                                                 D=self.sv,
-                                                                 V=self.loadings,
-                                                                 rank=self.signal_rank,
-                                                                 num_samples=num_samples,
-                                                                 quantile=quantile)
+        if sampling_procedure == 'svd_resampling':
+            self.sin_bound_est = get_wedin_bound_svd_basis_resampling(X=self.X,
+                                                                     U=self.scores,
+                                                                     D=self.sv,
+                                                                     V=self.loadings,
+                                                                     rank=self.signal_rank,
+                                                                     num_samples=num_samples,
+                                                                     quantile=quantile)
 
         elif sampling_procedure == 'sample_project':
             self.sin_bound_est = get_wedin_bound_sample_project(X=self.X,
@@ -109,9 +122,10 @@ class JiveBlock(object):
                                                                 V=self.loadings,
                                                                 rank=self.signal_rank,
                                                                 num_samples=num_samples,
-                                                                quantile=quantile)
+                                                                quantile=quantile,
+                                                                qr=qr)
         else:
-            raise ValueError('sampling_procedure must be one of svec_resampling or sample_project')
+            raise ValueError('sampling_procedure must be one of svd_resampling or sample_project')
 
         # TODO: maybe give user option to kill these
         # if kill_init_svd:
@@ -174,7 +188,7 @@ class JiveBlock(object):
                                                                        joint_scores=joint_scores,
                                                                        sv_threshold=self.sv_threshold,
                                                                        individual_rank=individual_rank,
-                                                                       init_svd_rank=self.init_svd_rank,
+                                                                       signal_rank=self.signal_rank,
                                                                        save_full_estimate=self.save_full_estimate)
 
     def get_block_estimates(self):
@@ -283,7 +297,7 @@ def estimate_joint_space(X, joint_scores, save_full_estimate=False):
 
 
 def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=None,
-                              init_svd_rank=None, save_full_estimate=False):
+                              signal_rank=None, save_full_estimate=False):
     """"
     Finds a block's individual space representation and the SVD of this space
 
@@ -316,16 +330,54 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
 
     # estimate individual rank
     if individual_rank is None:
-        # SVD of projected matrix
-        # TODO: better bound on rank
-        # TODO: maybe make this incremental i.e. compute rank R svd,
-        # if the estimated indiv rank is is equal to R then compute 
-        # R + 1 svd, etc 
-        max_rank = min(X.shape) - joint_scores.shape[1]
-        if init_svd_rank is not None:
-            max_rank = min(init_svd_rank, max_rank)
 
-        scores, sv, loadings = svd_wrapper(I, max_rank)
+        # largest the individual rank can be
+        # TODO: check this
+        joint_rank = joint_scores.shape[1]
+        max_rank = min(X.shape) - joint_rank
+
+        if issparse(X):
+
+            # compute a rank R1 SVD of I
+            # if the estimated individual rank is less than R1 we are done
+            # otherwise compute a rank R2 SVD of I
+            # keep going until we find the individual rank
+
+            # TODO: this could use lots of optimizing
+            current_rank = min(int(1.5 * signal_rank), max_rank) # 1.2 is somewhat arbitrary
+            scores, sv, loadings = svd_wrapper(I, current_rank)
+            individual_rank = sum(sv > sv_threshold)
+
+            if individual_rank == current_rank:
+
+                found_indiv_rank = False
+                for t in range(3):
+
+                    # current guess at an upper bound for the individual rank
+                    additional_rank = signal_rank
+
+                    current_rank = current_rank + additional_rank
+                    current_rank = min(current_rank, max_rank)
+
+                    # compute additional additional_rank SVD components
+
+                    # TODO: possibly use svds_additional to speed up calculation  
+                    # scores, sv, loadings = svds_additional(I, scores, sv, loadings, additional_rank)
+                    scores, sv, loadings = svd_wrapper(I, current_rank)
+                    individual_rank = sum(sv > sv_threshold)
+
+                    # we are done if the individual rank estimate is less
+                    # than the current_rank or if the current_rank is equal to the maximal rank
+                    if (individual_rank < current_rank) or (current_rank == max_rank):
+                        found_indiv_rank = True
+                        break
+
+                if not found_indiv_rank:
+                    warnings.warn('individual rank estimate probably too low')
+
+
+        else:
+            scores, sv, loadings = svd_wrapper(I, max_rank)
 
         # compute individual rank
         individual_rank = sum(sv > sv_threshold)
@@ -343,7 +395,6 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
     else:
         I = np.array([])  # Kill I matrix to save memory
 
-    print(np.allclose(np.dot(loadings.T, loadings), np.eye(loadings.shape[1])))
     return I, scores, sv, loadings
 
 

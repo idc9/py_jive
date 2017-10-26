@@ -86,7 +86,14 @@ def svds_additional(A, U_first, D_first, V_first, k):
 
     R = svd_residual(A, U_first, D_first, V_first.T)
     
-    return svd_wrapper(R, k)
+    U, D, V = svd_wrapper(R, k)
+
+    # TODO: finish this
+    U = np.block([U_first, U])
+    D = np.block([D_first, D])
+    V = np.block([V_first, V])
+
+    return U, D, V
 
 def scree_plot(sv, log=False, diff=False, title=''):
     """

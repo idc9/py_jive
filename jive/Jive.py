@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import os
+import warnings
 
 from jive.lin_alg_fun import svd_wrapper
 from jive.JiveBlock import JiveBlock
@@ -81,10 +82,12 @@ class Jive(object):
         
         # SVD on joint scores matrx
         joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
+        self.total_signal_dim = joint_scores_matrix.shape[1] # TODO: maybe rename this
+
         self.joint_scores, self.joint_sv, self.joint_loadings =  svd_wrapper(joint_scores_matrix)
 
 
-    def compute_wedin_bound(self, sampling_procedures=None, num_samples=1000, quantile='median'):
+    def compute_wedin_bound(self, sampling_procedures=None, num_samples=1000, quantile='median', qr=True):
         """
         Estimate joint score space and compute final decomposition
         - SVD on joint scores matrix
@@ -102,21 +105,28 @@ class Jive(object):
         quantile: for wedin bound TODO better description
         """
 
-        # TODO: think more about behaviour of sampling_procedures
+        if not hasattr(self, 'joint_scores'):
+            raise ValueError('Please run compute_joint_svd() before computing the wedin bound')
 
+        # TODO: think more about behaviour of sampling_procedures
         if sampling_procedures is None:
             sampling_procedures = [None] * self.K
 
         # compute wedin bound for each block
         for k in range(self.K):
-            self.blocks[k].compute_wedin_bound(sampling_procedures[k], num_samples, quantile)
+            self.blocks[k].compute_wedin_bound(sampling_procedures[k], num_samples, quantile, qr)
 
-        sin_bound_ests = [self.blocks[k].wedin_bound for k in range(self.K)]
+        sin_bound_ests = [self.blocks[k].sin_bound_est for k in range(self.K)]
 
-        wedin_threshold = self.K - sum([b ** 2 for b in sin_bound_ests])
+        # compute theshold and count how many singular values are above the threshold 
+        # TODO: double check we want min(b, 1)
+        wedin_threshold = self.K - sum([min(b, 1) ** 2 for b in sin_bound_ests])
+        joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > wedin_threshold)
 
-        joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > threshold)
-
+        # if JIVE thinks everything is in the joint space i.e.
+        # the joint rank is equal to the sum of the signal ranks
+        if joint_rank_wedin_estimate == self.total_signal_dim:
+            warnings.warn('The wedin bound estimate thinks the entire signal space is joint. This could mean the wedin bound is too weak.')
 
         self.sin_bound_ests = sin_bound_ests
         self.joint_rank_wedin_estimate = joint_rank_wedin_estimate
@@ -177,6 +187,7 @@ class Jive(object):
 
         if self.joint_rank == 0:
             # TODO: how to handle this situation?
+            # maybe do nothing
             print('warning all joint signals removed!')
 
     def compute_block_specific_spaces(self, save_full_estimate=False, individual_ranks=None):
@@ -217,7 +228,8 @@ class Jive(object):
                                          save_full_estimate=False,
                                          sampling_procedures=None,
                                          num_samples=1000,
-                                         quantile='median'):
+                                         quantile='median',
+                                         qr=True):
         """ 
         Computes wedin bound, set's joint rank from wedin bound estimate, then
         computes final decomposition
@@ -239,7 +251,7 @@ class Jive(object):
         """
         self.compute_joint_svd()
 
-        self.compute_wedin_bound(sampling_procedures, num_samples, quantile)
+        self.compute_wedin_bound(sampling_procedures, num_samples, quantile, qr)
 
         self.set_joint_rank(self.joint_rank_wedin_estimate,
                             reconsider_joint_components)

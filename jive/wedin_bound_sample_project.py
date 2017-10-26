@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.utils.extmath import safe_sparse_dot
 
-def get_wedin_bound_sample_project(X, U, D, V, rank, num_samples=1000, quantile='median'):
+def get_wedin_bound_sample_project(X, U, D, V, rank, num_samples=1000, quantile='median', qr=True):
     """
     Computes the wedin bound using the sample-project procedure. This method
     does not require the full SVD.
@@ -23,12 +23,14 @@ def get_wedin_bound_sample_project(X, U, D, V, rank, num_samples=1000, quantile=
     U_norm_samples = norms_sample_project(X=X.T,
                                           B=U[:, 0:rank],
                                           rank=rank,
-                                          num_samples=num_samples)
+                                          num_samples=num_samples,
+                                          qr=qr)
 
     V_norm_samples = norms_sample_project(X=X,
                                           B=V[:, 0:rank],
                                           rank=rank,
-                                          num_samples=num_samples)
+                                          num_samples=num_samples,
+                                          qr=qr)
 
     # compute upper bound
     # TODO: which way?
@@ -41,7 +43,7 @@ def get_wedin_bound_sample_project(X, U, D, V, rank, num_samples=1000, quantile=
 
     return wedin_bound_est
 
-def norms_sample_project(X, B, rank, num_samples=1000):
+def norms_sample_project(X, B, rank, num_samples=1000, qr=True):
     """
     Samples vectors from space orthognal to signal space as follows
     - sample random vector from isotropic distribution
@@ -70,17 +72,17 @@ def norms_sample_project(X, B, rank, num_samples=1000):
     for s in range(num_samples):
 
         # sample from isotropic distribution
-        # TODO: uniform or normal?
-        vecs = np.random.uniform(size=(dim, rank))
+        vecs = np.random.normal(size=(dim, rank))
 
         # project onto space orthogonal to cols of B
         # vecs = (np.eye(dim) - np.dot(B, B.T)).dot(vecs)
         vecs = vecs - np.dot(B, np.dot(B.T, vecs))
 
-        # normalize vectors
-        vecs = np.vstack([unit_vector(vecs[:, c]) for c in range(vecs.shape[1])]).T
-
-        # TODO: maybe give option to create orthogonal basis using QR decomp
+        if qr:
+            vecs, _ = np.linalg.qr(vecs)
+        else:
+            # normalize vectors
+            vecs = np.vstack([unit_vector(vecs[:, c]) for c in range(vecs.shape[1])]).T
 
         # compute  operator L2 norm
         sampled_norms[s] = np.linalg.norm(X.dot(vecs), ord=2)

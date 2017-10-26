@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import dia_matrix
 
 from jive.lazymatpy.interface import aslinearoperator, LinearOperator, IdentityOperator
 from jive.lazymatpy.templates.ones import OnesOuterVec

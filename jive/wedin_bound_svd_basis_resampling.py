@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.utils.extmath import safe_sparse_dot
 
-def get_wedin_bound_svec_resampling(X, U, D, V, rank, num_samples=1000, quantile='median'):
+def get_wedin_bound_svd_basis_resampling(X, U, D, V, rank, num_samples=1000, quantile='median'):
     """
     Computes the wedin bound using the resampling procedure described in
     the AJIVE paper. This procedure requires the full SVD of X.
@@ -20,15 +20,15 @@ def get_wedin_bound_svec_resampling(X, U, D, V, rank, num_samples=1000, quantile
         raise NotImplemented
 
     # resample for U and V
-    U_sampled_norms = norms_svec_resampling(X=X.T,
-                                            orthogonal_basis=U[:, rank:],
-                                            rank=rank,
-                                            num_samples=num_samples)
+    U_sampled_norms = norms_svd_resampling(X=X.T,
+                                           orthogonal_basis=U[:, rank:],
+                                           rank=rank,
+                                           num_samples=num_samples)
 
-    V_sampled_norms = norms_svec_resampling(X=X,
-                                            orthogonal_basis=V[:, rank:],
-                                            rank=rank,
-                                            num_samples=num_samples)
+    V_sampled_norms = norms_svd_resampling(X=X,
+                                           orthogonal_basis=V[:, rank:],
+                                           rank=rank,
+                                           num_samples=num_samples)
 
     # compute upper bound
     # TODO: which way?
@@ -42,7 +42,7 @@ def get_wedin_bound_svec_resampling(X, U, D, V, rank, num_samples=1000, quantile
     return wedin_bound_est
 
 
-def norms_svec_resampling(X, orthogonal_basis, rank, num_samples=1000):
+def norms_svd_resampling(X, orthogonal_basis, rank, num_samples=1000):
     """
     Resampling procedure described in AJIVE paper for Wedin bound
 
