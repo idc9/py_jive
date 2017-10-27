@@ -289,7 +289,7 @@ class Jive(object):
         """"
         Returns the SVD of the concatonated scores matrix.
         """
-        if not hasattr(self, joint_scores) :
+        if not hasattr(self, 'joint_scores') :
             raise ValueError('joints space estimation has not yet been computed')
 
         return {'scores': self.joint_scores,
