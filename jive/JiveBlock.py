@@ -87,7 +87,11 @@ class JiveBlock(object):
         self.signal_basis = self.scores[:, 0:self.signal_rank]
 
 
-    def compute_wedin_bound(self, sampling_procedure=None, num_samples=1000, quantile='median', qr=True):
+    def compute_wedin_bound(self,
+                            sampling_procedure=None,
+                            num_samples=1000,
+                            quantile='median',
+                            qr=True):
         """
         Computes the block wedin bound
 
@@ -113,12 +117,12 @@ class JiveBlock(object):
 
         if sampling_procedure == 'svd_resampling':
             self.sin_bound_est = get_wedin_bound_svd_basis_resampling(X=self.X,
-                                                                     U=self.scores,
-                                                                     D=self.sv,
-                                                                     V=self.loadings,
-                                                                     rank=self.signal_rank,
-                                                                     num_samples=num_samples,
-                                                                     quantile=quantile)
+                                                                      U=self.scores,
+                                                                      D=self.sv,
+                                                                      V=self.loadings,
+                                                                      rank=self.signal_rank,
+                                                                      num_samples=num_samples,
+                                                                      quantile=quantile)
 
         elif sampling_procedure == 'sample_project':
             self.sin_bound_est = get_wedin_bound_sample_project(X=self.X,
@@ -138,7 +142,9 @@ class JiveBlock(object):
         #     self.loadings = None
         #    self.sv = None
 
-    def compute_final_decomposition(self, joint_scores, individual_rank=None,
+    def compute_final_decomposition(self,
+                                    joint_scores,
+                                    individual_rank=None,
                                     save_full_estimate=False):
         """
         Compute the JIVE decomposition of the block.
