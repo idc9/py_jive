@@ -33,7 +33,7 @@ class JiveBlock(object):
     def initial_svd(self, init_svd_rank):
         """
         SVD for initial signal space extraction
-        """   
+        """
         if issparse(self.X) and (init_svd_rank is None):
             raise ValueError('sparse matrices must have an init_svd_rank')
 
@@ -62,17 +62,22 @@ class JiveBlock(object):
         """
         User set signal rank
         """
+
         self.signal_rank = signal_rank
 
         if (self.init_svd_rank is not None) and (signal_rank >= self.init_svd_rank):
             warnings.warn('init_svd_rank must be at least signal_rank + 1 in order to compute singular value threshold to estimate individual rank. You can proceed without this threshold, but will have to manually select teh individual rank.')
-            
-            # TODO: decide what the behavior should be here
-            # Probably make sv_threshold fail by default, allow user to 
-            # set it themselves
-            sv_threshold = np.nan
-            # sv_threshold = max(self.sv)
 
+            # TODO: decide what the behavior should be here
+            # Probably make sv_threshold fail by default, allow user to
+            # set it themselves
+            self.sv_threshold = np.nan
+            # sv_threshold = max(self.sv)
+            warnings.warn('no singular value threshold')
+
+        elif not hasattr(self, 'sv'):
+            self.sv_threshold = np.nan
+            warnings.warn('no singular value threshold')
 
         else:
             # compute singular value threshold
@@ -361,7 +366,7 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
 
                     # compute additional additional_rank SVD components
 
-                    # TODO: possibly use svds_additional to speed up calculation  
+                    # TODO: possibly use svds_additional to speed up calculation
                     # scores, sv, loadings = svds_additional(I, scores, sv, loadings, additional_rank)
                     scores, sv, loadings = svd_wrapper(I, current_rank)
                     individual_rank = sum(sv > sv_threshold)
@@ -381,11 +386,11 @@ def estimate_individual_space(X, joint_scores, sv_threshold, individual_rank=Non
 
         # compute individual rank
         individual_rank = sum(sv > sv_threshold)
-        
+
         scores = scores[:, 0:individual_rank]
         sv = sv[0:individual_rank]
         loadings = loadings[:, 0:individual_rank]
-    
+
     else:
         scores, sv, loadings = svd_wrapper(I, individual_rank)
 

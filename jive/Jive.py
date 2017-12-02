@@ -79,7 +79,7 @@ class Jive(object):
 
 
     def compute_joint_svd(self):
-        
+
         # SVD on joint scores matrx
         joint_scores_matrix = np.bmat([self.blocks[k].signal_basis for k in range(self.K)])
         self.total_signal_dim = joint_scores_matrix.shape[1] # TODO: maybe rename this
@@ -87,7 +87,11 @@ class Jive(object):
         self.joint_scores, self.joint_sv, self.joint_loadings =  svd_wrapper(joint_scores_matrix)
 
 
-    def compute_wedin_bound(self, sampling_procedures=None, num_samples=1000, quantile='median', qr=True):
+    def compute_wedin_bound(self,
+                            sampling_procedures=None,
+                            num_samples=1000,
+                            quantile='median',
+                            qr=True):
         """
         Estimate joint score space and compute final decomposition
         - SVD on joint scores matrix
@@ -97,7 +101,7 @@ class Jive(object):
         Parameters
         ----------
         sampling_procedures: which sampling procedure each block should use. Can
-        be either None or list with entries either 'svec_resampling' or 'sample_project'. 
+        be either None or list with entries either 'svec_resampling' or 'sample_project'.
         If None the will defer use svec_resampling for dense matrices and sample_project for sparse matrices.
 
         num_samples: number of columns to resample for wedin bound
@@ -118,7 +122,7 @@ class Jive(object):
 
         sin_bound_ests = [self.blocks[k].sin_bound_est for k in range(self.K)]
 
-        # compute theshold and count how many singular values are above the threshold 
+        # compute theshold and count how many singular values are above the threshold
         # TODO: double check we want min(b, 1)
         wedin_threshold = self.K - sum([min(b, 1) ** 2 for b in sin_bound_ests])
         joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > wedin_threshold)
@@ -199,7 +203,7 @@ class Jive(object):
         ----------
         save_full_estimate: whether or not to save the full I, J, E matrices
 
-        individual_ranks: gives user option to specify individual ranks. 
+        individual_ranks: gives user option to specify individual ranks.
         Either a list of length K or None. Setting an entry equal to None
         will cause that block to estimate its individual rank.
 
@@ -230,7 +234,7 @@ class Jive(object):
                                          num_samples=1000,
                                          quantile='median',
                                          qr=True):
-        """ 
+        """
         Computes wedin bound, set's joint rank from wedin bound estimate, then
         computes final decomposition
 
@@ -346,7 +350,7 @@ class Jive(object):
         common_joint = self.get_common_joint_space_estimate()
         for dat in svd_dat:
             kwargs['common_%s' % dat] = common_joint[dat]
-            
+
         current_time = time.strftime("%m/%d/%Y %H:%M:%S")
         kwargs['metadata'] = [current_time, notes]
 
@@ -421,18 +425,20 @@ def get_saved_jive_estimates(fname=''):
     K = saved_data['K']
     svd_dat = ['scores', 'sing_vals', 'loadings', 'rank']
     modes = ['joint', 'individual']
-    
-    block_estimates = [{mode: {dat: [] for dat in svd_dat + ['full']} for mode in modes}]
+
+    block_estimates = [{mode: {dat: [] for dat in svd_dat + ['full']}
+                        for mode in modes} for _ in range(K)]
+
     for k in range(K):
         for mode in modes:
             for dat in svd_dat + ['full']:
                 label = '%d_%s_%s' % (k, mode, dat)
                 block_estimates[k][mode][dat] = saved_data[label]
 
-    common_joint_estimates = {data : [] for dat in svd_dat}
+    common_joint_estimates = {dat : [] for dat in svd_dat}
     for dat in svd_dat:
         common_joint_estimates[dat] = saved_data['common_%s' % dat]
 
-    metadata = saved_data['meta_data']
+    metadata = saved_data['metadata']
 
     return block_estimates, common_joint_estimates, metadata
