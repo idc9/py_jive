@@ -14,7 +14,7 @@ def svd_wrapper(X, rank = None):
     """
     Computes the (possibly partial) SVD of a matrix. Handles the case where
     X is either dense or sparse.
-    
+
     Parameters
     ----------
     X: either dense or sparse
@@ -30,13 +30,11 @@ def svd_wrapper(X, rank = None):
     if isinstance(X, LinearOperator):
         scipy_svds = svds(convert2scipy(X), rank)
         U, D, V = fix_scipy_svds(scipy_svds)
-        V = V.T
 
     elif issparse(X):
         scipy_svds = svds(X, rank)
         U, D, V = fix_scipy_svds(scipy_svds)
-        V = V.T
-        
+
     else:
         # TODO: implement partial SVD
         U, D, V = full_svd(X, full_matrices=False)
@@ -46,7 +44,7 @@ def svd_wrapper(X, rank = None):
             U = U[:, :rank]
             D = D[:rank]
             V = V[:, :rank]
-        
+
     return U, D, V
 
 
@@ -55,11 +53,11 @@ def fix_scipy_svds(scipy_svds):
     scipy.sparse.linalg.svds orders the singular values backwards,
     this function fixes this insanity and returns the singular values
     in decreasing order
-    
+
     Parameters
     ----------
     scipy_svds: the out put from scipy.sparse.linalg.svds
-    
+
     Output
     ------
     U, D, V
@@ -67,9 +65,11 @@ def fix_scipy_svds(scipy_svds):
     """
     U, D, V = scipy_svds
 
-    U = U[:, ::-1]
-    D = D[::-1]
-    V = V[::-1, :]
+    sv_reordering = np.argsort(-D)
+
+    U = U[:, sv_reordering]
+    D = D[sv_reordering]
+    V = V.T[:, sv_reordering]
 
     return U, D, V
 
@@ -85,7 +85,7 @@ def svds_additional(A, U_first, D_first, V_first, k):
     """
 
     R = svd_residual(A, U_first, D_first, V_first.T)
-    
+
     U, D, V = svd_wrapper(R, k)
 
     # TODO: finish this
