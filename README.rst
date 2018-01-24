@@ -51,13 +51,14 @@ Example
     blocks = [X, Y]
 
     # fit JIVE
-    jive = Jive(blocks, wedin_estimate=True)
+    jive = Jive(blocks)
+    jive.compute_initial_svd()
     jive.scree_plots()
     jive.set_signal_ranks([2, 3]) # select signal ranks based on scree plot
+    jive.estimate_jive_spaces()
 
-    block_estimates = jive.get_block_estimates()
-
-    plot_jive_full_estimates(jive)
+    full_block_estimates = jive.get_block_full_estimates()
+    plot_jive_full_estimates(full_block_estimates, blocks)
 
 For some more example code see `this notebook`_.
 

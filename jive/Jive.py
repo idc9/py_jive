@@ -335,6 +335,12 @@ class Jive(object):
                                  wedin_percentile=wedin_percentile,
                                  random_percentile=random_percentile)
 
+
+        # if JIVE thinks everything is in the joint space i.e.
+        # the joint rank is equal to the sum of the signal ranks
+        if self.joint_rank_estimate == self.total_signal_dim:
+            warnings.warn('The wedin + random bound estimate thinks the entire signal space is joint. This could mean the wedin bound is too weak.')
+
         self.set_joint_rank(self.joint_rank_estimate,
                             reconsider_joint_components)
 
