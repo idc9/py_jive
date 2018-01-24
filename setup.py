@@ -12,6 +12,7 @@ setup(name='jive',
       version='0.0.2',
       description='Implementation of the Angle based Joint and Inidividual Variation Explained',
       url='http://github.com/idc9/py_jive',
+      download_url = 'https://github.com/idc9/py_jive/tarball/0.0.2'
       author='Iain Carmichael',
       author_email='idc9@cornell.edu',
       license='MIT',
