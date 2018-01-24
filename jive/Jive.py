@@ -274,7 +274,9 @@ class Jive(object):
             # maybe do nothing
             print('warning all joint signals removed!')
 
-    def compute_block_specific_spaces(self, save_full_estimate=False, individual_ranks=None):
+    def compute_block_specific_spaces(self,
+                                      save_full_estimate=True,
+                                      individual_ranks=None):
         """
         Computes final decomposition and estimates for block specific
         joint and individual space
@@ -309,7 +311,7 @@ class Jive(object):
 
     def estimate_jive_spaces(self,
                              reconsider_joint_components=True,
-                             save_full_estimate=False,
+                             save_full_estimate=True,
                              num_samples=1000,
                              wedin_percentile=95,
                              random_percentile=5):
@@ -363,6 +365,9 @@ class Jive(object):
         'scores', 'sing_vals', 'loadings', or 'rank'
         """
 
+        if not self.has_finished:
+            raise ValueError('JIVE has not yet computed block decomposition e.g. run estimate_jive_spaces()')
+
         return [self.blocks[k].get_block_estimates() for k in range(self.K)]
 
     def get_common_joint_space_estimate(self):
@@ -388,7 +393,7 @@ class Jive(object):
         a list of the full block estimates (I, J, E) i.e. estimates[k]['J']
         """
         if not self.has_finished:
-            raise ValueError('JIVE has not yet computed block decomposition')
+            raise ValueError('JIVE has not yet computed block decomposition e.g. run estimate_jive_spaces()')
 
         # TODO: give the option to return only some of I, J and E
         return [self.blocks[k].get_full_estimates()
@@ -408,6 +413,8 @@ class Jive(object):
         notes: any notes you want to include
         force: whether or note to overwrite a file with the same name
         """
+        if not self.has_finished:
+            raise ValueError('JIVE has not yet computed block decomposition e.g. run estimate_jive_spaces()')
 
         if os.path.exists(fname) and (not force):
             raise ValueError('%s already exists' % fname)
