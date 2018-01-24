@@ -25,18 +25,13 @@ class AjiveFig2(unittest.TestCase):
         self.Y_obs, self.Y_joint, self.Y_indiv, self. Y_noise = generate_data_ajive_fig2(seed)
 
         blocks = [self.X_obs, self.Y_obs]
-        init_svd_ranks = None
-        wedin_estimate = True
-        save_full_final_decomp = True
+        jive = Jive(blocks)
+        jive.compute_initial_svd()
+        jive.set_signal_ranks([2, 3])
+        jive.compute_joint_svd()
+        jive.estimate_jive_spaces()
 
-        # compute JIVE decomposition
-        jive = Jive(blocks=blocks,
-                    init_svd_ranks=init_svd_ranks,
-                    wedin_estimate=wedin_estimate,
-                    save_full_final_decomp=save_full_final_decomp)
-    
-        jive.set_signal_ranks([2, 3])  # we know the true ranks
-        self.block_estimates = jive.get_block_estimates()
+        self.block_estimates = jive.block_specific_estimates = jive.get_block_specific_estimates()
 
     def test_individual_rank_estimates(self):
         """

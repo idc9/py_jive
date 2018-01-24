@@ -3,7 +3,7 @@ import numpy as np
 
 from jive.ajive_fig2 import *
 from jive.Jive import *
-from jive.block_visualization import *
+from jive.jive_visualization import *
 
 
 class JiveViz(unittest.TestCase):
@@ -21,28 +21,23 @@ class JiveViz(unittest.TestCase):
         Y_obs, Y_joint, Y_indiv, Y_noise = generate_data_ajive_fig2(seed)
 
         blocks = [X_obs, Y_obs]
+
+        # compute JIVE decomposition
         jive = Jive(blocks=blocks)
+
         jive.compute_initial_svd()
         jive.set_signal_ranks([2, 3])
         jive.compute_joint_svd()
         jive.estimate_joint_rank()
-        jive.estimate_jive_spaces()
 
-        self.blocks = blocks
-        self.full_block_estimates = jive.get_block_full_estimates()
+        self.jive = jive
 
-    def test_block_plot(self):
-        """
-        Make sure plot_data_blocks() runs without error.
-        """
-        plot_data_blocks(self.blocks)
-        self.assertTrue(True)
 
-    def test_jive_plot(self):
+    def test_joint_diagnostic_plot(self):
         """
-        Make sure plot_jive_full_estimates() runs without error.
+        Make sure plot_joint_diagnostic() runs without error.
         """
-        plot_jive_full_estimates(self.full_block_estimates, self.blocks)
+        self.jive.plot_joint_diagnostic()
         self.assertTrue(True)
 
 if __name__ == '__main__':
