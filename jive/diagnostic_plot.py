@@ -78,7 +78,7 @@ def plot_joint_diagnostic(joint_svsq,
                         label=label,
                         lw=1)
 
-    plt.xlabel('squared singluar value')
+    plt.xlabel('squared singular value')
     plt.legend()
     plt.ylim([0, 1])
     plt.xlim(xmin=0)
