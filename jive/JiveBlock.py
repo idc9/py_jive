@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import warnings
 from scipy.sparse import issparse
 
-from jive.wedin_bound_sample_project import get_wedin_bound_sample_project
-from jive.wedin_bound_svd_basis_resampling import get_wedin_bound_svd_basis_resampling
+from jive.wedin_bound import get_wedin_samples
 from jive.lin_alg_fun import scree_plot
 
 from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
@@ -51,11 +50,11 @@ class JiveBlock(object):
         if not hasattr(self, 'sv'):
             raise ValueError('please run initial_svd() before making scree plot')
 
-
         if self.name:
             title = self.name
         else:
             title = ''
+
         scree_plot(self.sv, log=log, diff=diff,  title=title)
 
     def set_signal_rank(self, signal_rank):
@@ -86,61 +85,70 @@ class JiveBlock(object):
         # initial signal space estimate
         self.signal_basis = self.scores[:, 0:self.signal_rank]
 
+    def sample_wedin_bound(self, num_samples):
 
-    def compute_wedin_bound(self,
-                            sampling_procedure=None,
-                            num_samples=1000,
-                            quantile='median',
-                            qr=True):
-        """
-        Computes the block wedin bound
+        self.wedin_samples = get_wedin_samples(X=self.X,
+                                               U=self.scores,
+                                               D=self.sv,
+                                               V=self.loadings,
+                                               rank=self.signal_rank,
+                                               num_samples=num_samples)
 
-        Parameters
-        ----------
-        sampling_procedure: how to sample vectors from space orthognal to signal subspace
-        ['svd_resampling' or 'sample_project']. If X is sparse the must use sample_project since
-        svd_resampling requires the fulll SVD. If None then will use 'svd_resampling' for dense
-        and 'sample_project' for sparse
 
-        num_samples: number of columns to resample for wedin bound
+    # def compute_wedin_bound(self,
+    #                         sampling_procedure=None,
+    #                         num_samples=1000,
+    #                         quantile='median',
+    #                         qr=True):
+    #     """
+    #     Computes the block wedin bound
 
-        quantile: for wedin bound TODO better description
-        """
-        if sampling_procedure is None:
-            if issparse(self.X):
-                sampling_procedure ='sample_project'
-            else:
-                sampling_procedure ='svd_resampling'
+    #     Parameters
+    #     ----------
+    #     sampling_procedure: how to sample vectors from space orthognal to signal subspace
+    #     ['svd_resampling' or 'sample_project']. If X is sparse the must use sample_project since
+    #     svd_resampling requires the fulll SVD. If None then will use 'svd_resampling' for dense
+    #     and 'sample_project' for sparse
 
-        if issparse(self.X) and (sampling_procedure == 'svd_resampling'):
-            raise ValueError('sparse matrices require sample_project because the full SVD is not computed')
+    #     num_samples: number of columns to resample for wedin bound
 
-        if sampling_procedure == 'svd_resampling':
-            self.sin_bound_est = get_wedin_bound_svd_basis_resampling(X=self.X,
-                                                                      U=self.scores,
-                                                                      D=self.sv,
-                                                                      V=self.loadings,
-                                                                      rank=self.signal_rank,
-                                                                      num_samples=num_samples,
-                                                                      quantile=quantile)
+    #     quantile: for wedin bound TODO better description
+    #     """
+    #     if sampling_procedure is None:
+    #         if issparse(self.X):
+    #             sampling_procedure ='sample_project'
+    #         else:
+    #             sampling_procedure ='svd_resampling'
 
-        elif sampling_procedure == 'sample_project':
-            self.sin_bound_est = get_wedin_bound_sample_project(X=self.X,
-                                                                U=self.scores,
-                                                                D=self.sv,
-                                                                V=self.loadings,
-                                                                rank=self.signal_rank,
-                                                                num_samples=num_samples,
-                                                                quantile=quantile,
-                                                                qr=qr)
-        else:
-            raise ValueError('sampling_procedure must be one of svd_resampling or sample_project')
+    #     if issparse(self.X) and (sampling_procedure == 'svd_resampling'):
+    #         raise ValueError('sparse matrices require sample_project because the full SVD is not computed')
 
-        # TODO: maybe give user option to kill these
-        # if kill_init_svd:
-        #     self.scores = None
-        #     self.loadings = None
-        #    self.sv = None
+    #     if sampling_procedure == 'svd_resampling':
+    #         self.sin_bound_est = get_wedin_bound_svd_basis_resampling(X=self.X,
+    #                                                                   U=self.scores,
+    #                                                                   D=self.sv,
+    #                                                                   V=self.loadings,
+    #                                                                   rank=self.signal_rank,
+    #                                                                   num_samples=num_samples,
+    #                                                                   quantile=quantile)
+
+    #     elif sampling_procedure == 'sample_project':
+    #         self.sin_bound_est = get_wedin_bound_sample_project(X=self.X,
+    #                                                             U=self.scores,
+    #                                                             D=self.sv,
+    #                                                             V=self.loadings,
+    #                                                             rank=self.signal_rank,
+    #                                                             num_samples=num_samples,
+    #                                                             quantile=quantile,
+    #                                                             qr=qr)
+    #     else:
+    #         raise ValueError('sampling_procedure must be one of svd_resampling or sample_project')
+
+    #     # TODO: maybe give user option to kill these
+    #     # if kill_init_svd:
+    #     #     self.scores = None
+    #     #     self.loadings = None
+    #     #    self.sv = None
 
     def compute_final_decomposition(self,
                                     joint_scores,

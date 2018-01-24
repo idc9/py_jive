@@ -9,6 +9,7 @@ import warnings
 from jive.lin_alg_fun import svd_wrapper
 from jive.JiveBlock import JiveBlock
 
+from jive.diagnostic_plot import plot_joint_diagnostic
 
 class Jive(object):
 
@@ -77,6 +78,89 @@ class Jive(object):
         for k in range(self.K):
             self.blocks[k].set_signal_rank(signal_ranks[k])
 
+    def sample_wedin_bounds(self, num_samples=1000):
+        """
+        For each block, generate samples to estimate the wedin bound (described in section 2 of the AJIVE paper)
+        """
+
+        if not hasattr(self, 'initial_svs'):
+            raise ValueError('Please run compute_initial_svd() before sampling for the wedin bound')
+
+        for k in range(self.K):
+            self.blocks[k].sample_wedin_bound(num_samples)
+
+        self.wedin_sv_samples = [self.K - sum([min(self.blocks[k].wedin_samples[i], 1) ** 2
+                                 for k in range(self.K)]) for i in range(num_samples)]
+
+    def sample_random_direction_bounds(self, num_samples=1000):
+        if not hasattr(self, 'initial_svs'):
+            raise ValueError('Please run compute_initial_svd() before sampling the random direction bounds')
+
+        self.random_sv_samples = [0.0]*num_samples
+        signal_ranks = [self.blocks[k].signal_rank for k in range(self.K)]
+        for i in range(num_samples):
+
+            M = [0]*self.K
+            for k in range(self.K):
+
+                # sample random orthonormal basis
+                Z = np.random.normal(size=[self.n, signal_ranks[k]])
+                M[k] = np.linalg.qr(Z)[0]
+
+            # compute largest sing val of random joint matrix
+            M = np.bmat(M)
+            _, svs, __ = svd_wrapper(M)
+            self.random_sv_samples[i] = max(svs) ** 2
+
+
+    # def compute_wedin_bound(self,
+    #                         sampling_procedures=None,
+    #                         num_samples=1000,
+    #                         quantile='median',
+    #                         qr=True):
+    #     # TODO: remove this
+    #     """
+    #     Estimate joint score space and compute final decomposition
+    #     - SVD on joint scores matrix
+    #     - find joint rank using wedin bound threshold
+
+
+    #     Parameters
+    #     ----------
+    #     sampling_procedures: which sampling procedure each block should use. Can
+    #     be either None or list with entries either 'svec_resampling' or 'sample_project'.
+    #     If None the will defer use svec_resampling for dense matrices and sample_project for sparse matrices.
+
+    #     num_samples: number of columns to resample for wedin bound
+
+    #     quantile: for wedin bound TODO better description
+    #     """
+
+    #     if not hasattr(self, 'joint_scores'):
+    #         raise ValueError('Please run compute_joint_svd() before computing the wedin bound')
+
+    #     # TODO: think more about behaviour of sampling_procedures
+    #     if sampling_procedures is None:
+    #         sampling_procedures = [None] * self.K
+
+    #     # compute wedin bound for each block
+    #     for k in range(self.K):
+    #         self.blocks[k].compute_wedin_bound(sampling_procedures[k], num_samples, quantile, qr)
+
+    #     sin_bound_ests = [self.blocks[k].sin_bound_est for k in range(self.K)]
+
+    #     # compute theshold and count how many singular values are above the threshold
+    #     # TODO: double check we want min(b, 1)
+    #     wedin_threshold = self.K - sum([min(b, 1) ** 2 for b in sin_bound_ests])
+    #     joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > wedin_threshold)
+
+    #     # if JIVE thinks everything is in the joint space i.e.
+    #     # the joint rank is equal to the sum of the signal ranks
+    #     if joint_rank_wedin_estimate == self.total_signal_dim:
+    #         warnings.warn('The wedin bound estimate thinks the entire signal space is joint. This could mean the wedin bound is too weak.')
+
+    #     self.sin_bound_ests = sin_bound_ests
+    #     self.joint_rank_wedin_estimate = joint_rank_wedin_estimate
 
     def compute_joint_svd(self):
 
@@ -86,55 +170,51 @@ class Jive(object):
 
         self.joint_scores, self.joint_sv, self.joint_loadings =  svd_wrapper(joint_scores_matrix)
 
-
-    def compute_wedin_bound(self,
-                            sampling_procedures=None,
-                            num_samples=1000,
-                            quantile='median',
-                            qr=True):
+    def estimate_joint_rank(self, num_samples=1000,
+                            wedin_percentile=95, random_percentile=5):
         """
-        Estimate joint score space and compute final decomposition
-        - SVD on joint scores matrix
-        - find joint rank using wedin bound threshold
-
+        Estimates the joint rank using the wedin and random sampling bounds
 
         Parameters
         ----------
-        sampling_procedures: which sampling procedure each block should use. Can
-        be either None or list with entries either 'svec_resampling' or 'sample_project'.
-        If None the will defer use svec_resampling for dense matrices and sample_project for sparse matrices.
+        num_samples:
 
-        num_samples: number of columns to resample for wedin bound
+        wedin_percentile:
 
-        quantile: for wedin bound TODO better description
+        random_percentile:
         """
 
-        if not hasattr(self, 'joint_scores'):
-            raise ValueError('Please run compute_joint_svd() before computing the wedin bound')
+        if not hasattr(self, 'joint_sv'):
+            raise ValueError('Please run compute_joint_svd() before making diagnostic plot')
 
-        # TODO: think more about behaviour of sampling_procedures
-        if sampling_procedures is None:
-            sampling_procedures = [None] * self.K
+        self.sample_wedin_bounds(num_samples)
+        self.sample_random_direction_bounds(num_samples)
 
-        # compute wedin bound for each block
-        for k in range(self.K):
-            self.blocks[k].compute_wedin_bound(sampling_procedures[k], num_samples, quantile, qr)
+        wedin_cutoff = np.percentile(self.wedin_sv_samples, wedin_percentile)
+        random_cutoff = np.percentile(self.random_sv_samples, random_percentile)
+        svsq_cutoff = max(wedin_cutoff, wedin_cutoff)
 
-        sin_bound_ests = [self.blocks[k].sin_bound_est for k in range(self.K)]
+        self.joint_rank_estimate = sum(self.joint_sv ** 2 > svsq_cutoff)
 
-        # compute theshold and count how many singular values are above the threshold
-        # TODO: double check we want min(b, 1)
-        wedin_threshold = self.K - sum([min(b, 1) ** 2 for b in sin_bound_ests])
-        joint_rank_wedin_estimate = sum(self.joint_sv ** 2 > wedin_threshold)
+    def plot_joint_diagnostic(self, wedin_percentile=95, random_percentile=5):
+        """
+        Plots joint rank threshold diagnostic plot
+        """
 
-        # if JIVE thinks everything is in the joint space i.e.
-        # the joint rank is equal to the sum of the signal ranks
-        if joint_rank_wedin_estimate == self.total_signal_dim:
-            warnings.warn('The wedin bound estimate thinks the entire signal space is joint. This could mean the wedin bound is too weak.')
+        if not hasattr(self, 'wedin_sv_samples'):
+            raise ValueError('Please run sample_wedin_bounds() before making diagnostic plot')
 
-        self.sin_bound_ests = sin_bound_ests
-        self.joint_rank_wedin_estimate = joint_rank_wedin_estimate
+        if not hasattr(self, 'random_sv_samples'):
+            raise ValueError('Please run sample_random_direction_bounds() before making diagnostic plot')
 
+        if not hasattr(self, 'joint_sv'):
+            raise ValueError('Please run compute_joint_svd() before making diagnostic plot')
+
+        plot_joint_diagnostic(joint_svsq=self.joint_sv ** 2,
+                              wedin_sv_samples=self.wedin_sv_samples,
+                              random_sv_samples=self.random_sv_samples,
+                              wedin_percentile=wedin_percentile,
+                              random_percentile=random_percentile)
 
     def set_joint_rank(self, joint_rank, reconsider_joint_components=False):
         """
@@ -227,13 +307,12 @@ class Jive(object):
 
         self.has_finished = True
 
-    def estimate_jive_spaces_wedin_bound(self,
-                                         reconsider_joint_components=True,
-                                         save_full_estimate=False,
-                                         sampling_procedures=None,
-                                         num_samples=1000,
-                                         quantile='median',
-                                         qr=True):
+    def estimate_jive_spaces(self,
+                             reconsider_joint_components=True,
+                             save_full_estimate=False,
+                             num_samples=1000,
+                             wedin_percentile=95,
+                             random_percentile=5):
         """
         Computes wedin bound, set's joint rank from wedin bound estimate, then
         computes final decomposition
@@ -245,19 +324,16 @@ class Jive(object):
 
         save_full_estimate: whether or not to save the full I, J, E matrices
 
-        sampling_procedures: which sampling procedure each block should use. Can
-        be either None or list with entries either 'svec_resampling' or 'sample_project'
-        If None the will defer use svec_resampling for dense matrices and sample_project for sparse matrices.
-
         num_samples: number of columns to resample for wedin bound
 
-        quantile: for wedin bound TODO better description
         """
         self.compute_joint_svd()
 
-        self.compute_wedin_bound(sampling_procedures, num_samples, quantile, qr)
+        self.estimate_joint_rank(num_samples=num_samples,
+                                 wedin_percentile=wedin_percentile,
+                                 random_percentile=random_percentile)
 
-        self.set_joint_rank(self.joint_rank_wedin_estimate,
+        self.set_joint_rank(self.joint_rank_estimate,
                             reconsider_joint_components)
 
         self.compute_block_specific_spaces(save_full_estimate)
@@ -442,3 +518,4 @@ def get_saved_jive_estimates(fname=''):
     metadata = saved_data['metadata']
 
     return block_estimates, common_joint_estimates, metadata
+
