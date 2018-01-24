@@ -9,7 +9,7 @@ def readme():
 install_requires = ['numpy', 'scipy', 'pandas', 'seaborn', 'matplotlib', 'sklearn']
 
 setup(name='jive',
-      version='0.0.1',
+      version='0.0.2',
       description='Implementation of the Angle based Joint and Inidividual Variation Explained',
       url='http://github.com/idc9/jive',
       author='Iain Carmichael',
