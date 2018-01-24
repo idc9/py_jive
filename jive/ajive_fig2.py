@@ -4,7 +4,6 @@ import pandas as pd
 import seaborn.apionly as sns
 import matplotlib.pyplot as plt
 
-
 def generate_data_ajive_fig2(seed=None):
     """
     Samples the data from AJIVE figure 2. Note here we use rows as observations
