@@ -1,4 +1,4 @@
-plot_joint_diagnosticfrom __future__ import print_function
+from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
