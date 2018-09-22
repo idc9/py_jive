@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 
 from statsmodels.distributions.empirical_distribution import ECDF
 
+
 def plot_joint_diagnostic(joint_svsq,
-                           wedin_sv_samples,
-                           random_sv_samples,
-                           wedin_percentile=95,
-                           random_percentile=5):
+                          wedin_sv_samples,
+                          random_sv_samples,
+                          wedin_percentile=95,
+                          random_percentile=5):
 
     plt.figure(figsize=[10, 10])
 
@@ -39,7 +40,7 @@ def plot_joint_diagnostic(joint_svsq,
                 color='blue',
                 ls='dashed',
                 lw=wedin_lw,
-                label = 'wedin %dth percentile' % wedin_percentile)
+                label='wedin %dth percentile' % wedin_percentile)
 
     # plot random CDF
     rand_xvals, rand_cdf = get_cdf_vals(random_sv_samples)
@@ -53,7 +54,7 @@ def plot_joint_diagnostic(joint_svsq,
                 color='red',
                 ls='dashed',
                 lw=rand_lw,
-                label = 'random %dth percentile' % random_percentile)
+                label='random %dth percentile' % random_percentile)
 
     # plot joint singular values
     first_joint = True
@@ -84,10 +85,10 @@ def plot_joint_diagnostic(joint_svsq,
     plt.xlim(xmin=0)
     plt.title('joint singluar value thresholding (joint rank estimate = %d)' % joint_rank_est)
 
+
 def get_cdf_vals(samples):
     ecdf = ECDF(samples)
     xvals = np.linspace(start=min(samples), stop=max(samples), num=100)
     cdf_vals = np.array([ecdf(x) for x in xvals])
-
 
     return xvals, cdf_vals

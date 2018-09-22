@@ -1,4 +1,4 @@
-from __future__ import print_function
+plot_joint_diagnosticfrom __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +10,7 @@ from jive.lin_alg_fun import svd_wrapper
 from jive.JiveBlock import JiveBlock
 
 from jive.diagnostic_plot import plot_joint_diagnostic
+
 
 class Jive(object):
 
@@ -192,7 +193,7 @@ class Jive(object):
 
         wedin_cutoff = np.percentile(self.wedin_sv_samples, wedin_percentile)
         random_cutoff = np.percentile(self.random_sv_samples, random_percentile)
-        svsq_cutoff = max(wedin_cutoff, wedin_cutoff)
+        svsq_cutoff = max(wedin_cutoff, random_cutoff)
 
         self.joint_rank_estimate = sum(self.joint_sv ** 2 > svsq_cutoff)
 
@@ -335,7 +336,6 @@ class Jive(object):
                                  wedin_percentile=wedin_percentile,
                                  random_percentile=random_percentile)
 
-
         # if JIVE thinks everything is in the joint space i.e.
         # the joint rank is equal to the sum of the signal ranks
         if self.joint_rank_estimate == self.total_signal_dim:
@@ -347,7 +347,6 @@ class Jive(object):
         self.compute_block_specific_spaces(save_full_estimate)
 
         self.has_finished = True
-
 
     def get_block_specific_estimates(self):
         """
@@ -387,7 +386,6 @@ class Jive(object):
                 'sing_vals': self.joint_sv,
                 'loadings': self.joint_loadings,
                 'rank': self.joint_rank}
-
 
     def get_block_full_estimates(self):
         """

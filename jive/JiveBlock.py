@@ -1,13 +1,14 @@
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import warnings
-from scipy.sparse import issparse
+from scipy.sparse import issparse, csr_matrix
 
 from jive.wedin_bound import get_wedin_samples
 from jive.lin_alg_fun import scree_plot
 
 from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
-from jive.lin_alg_fun import svd_wrapper, svds_additional
+from jive.lin_alg_fun import svd_wrapper# , svds_additional
+
 
 class JiveBlock(object):
 
@@ -186,7 +187,8 @@ class JiveBlock(object):
         Estimate the block's joint space
         """
         if joint_scores.shape[1] == 0:
-            self.J = np.array([])
+            # self.J = np.array([])
+            self.J = csr_matrix(self.X.shape)
             self.block_joint_scores = np.array([])
             self.block_joint_sv = np.array([])
             self.block_joint_loadings = np.array([])
