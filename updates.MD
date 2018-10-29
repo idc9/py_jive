@@ -5,11 +5,13 @@
 Major changes to both frontend and backend
 
 - cleaned up backend code to be more readable
+- renamed main object JIVE -> AJIVE
 - frontend now follows sklearn API more closely
 - fixed weird joint rank estimation bug
 - added jive.PCA.PCA object
 - added a number of new visualization tools
 - modified documentation to follow new API
+- TODOs left: finish documentation, testing, some minor issues noted in the code, sparse capabilities
 
 ## 1/23/18 (version 0.0.2)
 

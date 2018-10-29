@@ -42,23 +42,25 @@ Example
 
 .. code:: python
 
-    import numpy as np
-    from jive.Jive import Jive
-    from jive.jive_visualization import plot_jive_full_estimates
+    from jive.AJIVE import AJIVE
+    from jive.PCA import PCA
+    from jive.ajive_fig2 import generate_data_ajive_fig2
+    from jive.viz.block_visualization import jive_full_estimate_heatmaps
+    # %matplotlib inline
 
-    X = np.load('data/toy_ajive_fig2_x.npy')
-    Y = np.load('data/toy_ajive_fig2_y.npy')
-    blocks = [X, Y]
+    X, Y = generate_data_ajive_fig2()
 
-    # fit JIVE
-    jive = Jive(blocks)
-    jive.compute_initial_svd()
-    jive.scree_plots()
-    jive.set_signal_ranks([2, 3]) # select signal ranks based on scree plot
-    jive.estimate_jive_spaces()
+    # determine initial signal ranks by inspecting scree plots
+    PCA().fit(X).plot_scree()
+    PCA().fit(Y).plot_scree()
 
-    full_block_estimates = jive.get_block_full_estimates()
-    plot_jive_full_estimates(full_block_estimates, blocks)
+    ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3})
+    ajive.fit(blocks={'x': X, 'y': Y})
+
+    plt.figure(figsize=[10, 20])
+    jive_full_esimate_heatmaps(ajive.get_full_block_estimates(),
+                               blocks={'x':X, 'y': Y})
+
 
 For some more example code see `this notebook`_.
 

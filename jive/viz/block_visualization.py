@@ -14,7 +14,7 @@ def data_block_heatmaps(blocks):
         plt.title('block ' + str(k))
 
 
-def jive_full_esimate_heatmaps(full_block_estimates, blocks):
+def jive_full_estimate_heatmaps(full_block_estimates, blocks):
     """
     Plots the full JVIE estimates: X, J, I, E
     """
