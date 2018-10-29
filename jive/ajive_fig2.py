@@ -1,16 +1,30 @@
 import numpy as np
 import pandas as pd
 
-import seaborn.apionly as sns
+import seaborn as sns
 import matplotlib.pyplot as plt
 
-def generate_data_ajive_fig2(seed=None):
+
+def generate_data_ajive_fig2(seed=None, all_components=False):
     """
     Samples the data from AJIVE figure 2. Note here we use rows as observations
     i.e. data matrices are n x d where n = # observations.
 
+    Parameters
+    ----------
+    seed: None, int
+        Random seed to generate data.
+
+    all_components: bool
+        Whether or not to return all components or just the data
+
+    if all_components is True then
     X_obs, X_joint, X_indiv, X_noise, Y_obs, Y_joint, Y_indiv, Y_noise =
-    generate_data_ajive_fig2()
+    generate_data_ajive_fig2(all_components=True)
+
+    otherwise
+
+    X_obs, Y_obs  = generate_data_ajive_fig2(all_components=False)
     """
     # TODO: return ndarray instead of matrix
     if seed:
@@ -51,8 +65,10 @@ def generate_data_ajive_fig2(seed=None):
 
     Y_obs = Y_joint + Y_indiv + Y_noise
 
-    # TODO: make this into a list of dicts i.e. hierarchical
-    return X_obs, X_joint, X_indiv, X_noise, Y_obs, Y_joint, Y_indiv, Y_noise
+    if all_components:
+        return X_obs, X_joint, X_indiv, X_noise, Y_obs, Y_joint, Y_indiv, Y_noise
+    else:
+        return np.array(X_obs), np.array(Y_obs)
 
 
 def np_matrix_to_pd_dataframe(mat):

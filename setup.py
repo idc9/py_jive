@@ -9,7 +9,7 @@ def readme():
 install_requires = ['numpy', 'scipy', 'pandas', 'seaborn', 'matplotlib', 'sklearn']
 
 setup(name='jive',
-      version='0.0.2',
+      version='0.1.0',
       description='Implementation of the Angle based Joint and Inidividual Variation Explained',
       url='https://github.com/idc9/py_jive',
       download_url = 'https://github.com/idc9/py_jive/tarball/0.0.2',

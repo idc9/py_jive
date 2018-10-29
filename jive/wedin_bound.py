@@ -1,8 +1,9 @@
 import numpy as np
-from sklearn.utils.extmath import safe_sparse_dot
+
 
 def get_wedin_samples(X, U, D, V, rank, num_samples=1000):
     """
+    TODO: rename arguments
     Computes the wedin bound using the sample-project procedure. This method
     does not require the full SVD.
 
@@ -11,7 +12,7 @@ def get_wedin_samples(X, U, D, V, rank, num_samples=1000):
     X: the data block
     U, D, V: the partial SVD of X
     rank: the rank of the signal space
-    num_samples: number of saples for resampling procedure
+    num_samples: number of samples for resampling procedure
     """
 
     # resample for U and V
@@ -26,13 +27,14 @@ def get_wedin_samples(X, U, D, V, rank, num_samples=1000):
                                           num_samples=num_samples)
 
     sigma_min = D[rank - 1]  # TODO: double check -1
-    wedin_bound_samples = [max(U_norm_samples[s], V_norm_samples[s])/sigma_min for s in range(num_samples)]
+    wedin_bound_samples = [min(max(U_norm_samples[s], V_norm_samples[s])/sigma_min, 1) for s in range(num_samples)]
 
     return wedin_bound_samples
 
+
 def norms_sample_project(X, B, rank, num_samples=1000):
     """
-    Samples vectors from space orthognal to signal space as follows
+    Samples vectors from space orthogonal to signal space as follows
     - sample random vector from isotropic distribution
     - project onto orthogonal complement of signal space and normalize
 
