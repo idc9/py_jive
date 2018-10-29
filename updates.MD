@@ -11,7 +11,7 @@ Major changes to both frontend and backend
 - added jive.PCA.PCA object
 - added a number of new visualization tools
 - modified documentation to follow new API
-- TODOs left: finish documentation, testing, some minor issues noted in the code, sparse capabilities
+- TODOs left: finish documentation, testing, some minor issues noted in the code, sparse capabilities, put on pip
 
 ## 1/23/18 (version 0.0.2)
 

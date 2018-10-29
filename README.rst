@@ -23,7 +23,7 @@ An R version of this package can be found `here`_.
 
 Installation
 ============
-To install use pip:
+To install use pip (warning: not yet updated to newest version):
 
 ::
 
@@ -46,12 +46,16 @@ Example
     from jive.PCA import PCA
     from jive.ajive_fig2 import generate_data_ajive_fig2
     from jive.viz.block_visualization import jive_full_estimate_heatmaps
+    import matplotlib.pyplot as plt
     # %matplotlib inline
 
     X, Y = generate_data_ajive_fig2()
 
     # determine initial signal ranks by inspecting scree plots
+    plt.figure(figsize=[10, 5])
+    plt.subplot(1, 2, 1)
     PCA().fit(X).plot_scree()
+    plt.subplot(1, 2, 2)
     PCA().fit(Y).plot_scree()
 
     ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3})
@@ -60,6 +64,8 @@ Example
     plt.figure(figsize=[10, 20])
     jive_full_esimate_heatmaps(ajive.get_full_block_estimates(),
                                blocks={'x':X, 'y': Y})
+
+    ajive.plot_joint_diagnostic()
 
 
 For some more example code see `this notebook`_.
@@ -92,12 +98,12 @@ bug fixes, spelling errors, new features, etc.
 Citation
 ^^^^^^^^
 
-A `Journal of Statistical Software`_ paper is hopefully coming soon…
+A `Journal of Statistical Software`_ paper is coming soon.
 
 .. _Iain Carmichael: https://idc9.github.io/
 .. _Angle-Based Joint and Individual Variation Explained: https://arxiv.org/pdf/1704.02060.pdf
 .. _here: https://github.com/idc9/r_jive
-.. _this notebook: doc/jive_demo.ipynb
+.. _this notebook: doc/AJIVE_demo.ipynb
 .. _`https://github.com/idc9/py\_jive`: https://github.com/idc9/r_jive
 .. _AJIVE paper: https://arxiv.org/pdf/1704.02060.pdf
 .. _nose: http://nose.readthedocs.io/en/latest/
