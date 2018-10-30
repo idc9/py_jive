@@ -45,7 +45,7 @@ Example
     from jive.AJIVE import AJIVE
     from jive.PCA import PCA
     from jive.ajive_fig2 import generate_data_ajive_fig2
-    from jive.viz.block_visualization import jive_full_estimate_heatmaps
+    from jive.viz.block_visualization import data_block_heatmaps, jive_full_estimate_heatmaps
     import matplotlib.pyplot as plt
     # %matplotlib inline
 
@@ -53,8 +53,6 @@ Example
     data_block_heatmaps([X, Y])
 
 .. image:: doc/figures/data_heatmaps.png
-    :height: 25
-    :width: 50
 
 .. code:: python
 
@@ -66,8 +64,6 @@ Example
     PCA().fit(Y).plot_scree()
 
 .. image:: doc/figures/scree_plots.png
-    :height: 25
-    :width: 50
 
 .. code:: python
 
@@ -79,16 +75,13 @@ Example
                                 blocks={'x': X, 'y': Y})
 
 .. image:: doc/figures/jive_estimate_heatmaps.png
-    :height: 100
-    :width: 50
 
 .. code:: python
 
     ajive.plot_joint_diagnostic()
 
 .. image:: doc/figures/jive_diagnostic.png
-    :height: 25
-    :width: 25
+
 
 
 For some more example code see `this notebook`_.

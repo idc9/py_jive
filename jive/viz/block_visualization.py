@@ -8,10 +8,16 @@ def data_block_heatmaps(blocks):
     Plots a heat map of a bunch of data blocks
     """
     num_blocks = len(blocks)
-    for k in range(num_blocks):
+    if hasattr(blocks, 'keys'):
+        block_names = list(blocks.keys())
+    else:
+        # block_names = ['block {}'.format(i) for i in range(len(blocks))]
+        block_names = list(range(len(blocks)))
+
+    for k, bn in enumerate(block_names):
         plt.subplot(1, num_blocks, k + 1)
-        sns.heatmap(blocks[k], xticklabels=False, yticklabels=False, cmap='RdBu')
-        plt.title('block ' + str(k))
+        sns.heatmap(blocks[bn], xticklabels=False, yticklabels=False, cmap='RdBu')
+        plt.title('{}'.format(bn))
 
 
 def jive_full_estimate_heatmaps(full_block_estimates, blocks):
@@ -22,7 +28,8 @@ def jive_full_estimate_heatmaps(full_block_estimates, blocks):
 
     # plt.figure(figsize=[10, num_blocks * 10])
 
-    for k, bn in enumerate(full_block_estimates.keys()):
+    block_names = list(full_block_estimates.keys())
+    for k, bn in enumerate(block_names):
 
         # grab data
         X = blocks[bn]
@@ -33,7 +40,7 @@ def jive_full_estimate_heatmaps(full_block_estimates, blocks):
         # observed data
         plt.subplot(4, num_blocks, k + 1)
         sns.heatmap(X, xticklabels=False, yticklabels=False, cmap='RdBu')
-        plt.title('block ' + str(k) + ' observed data')
+        plt.title('{} observed data'.format(bn))
 
         # full joint estimate
         plt.subplot(4, num_blocks, k + num_blocks + 1)

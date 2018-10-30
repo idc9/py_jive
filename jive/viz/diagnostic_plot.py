@@ -10,8 +10,6 @@ def plot_joint_diagnostic(joint_svs,
                           wedin_percentile=5,
                           random_percentile=95):
 
-    plt.figure(figsize=[10, 10])
-
     # compute sv_threshold
     wedin_cutoff = np.percentile(wedin_sv_samples, wedin_percentile)
     rand_cutoff = np.percentile(random_sv_samples, random_percentile)
