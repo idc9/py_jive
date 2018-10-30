@@ -53,8 +53,8 @@ Example
     data_block_heatmaps([X, Y])
 
 .. image:: doc/figures/data_heatmaps.png
-    :height: 50
-    :width: 100
+    :height: 25
+    :width: 50
 
 .. code:: python
 
@@ -65,10 +65,9 @@ Example
     plt.subplot(1, 2, 2)
     PCA().fit(Y).plot_scree()
 
-
 .. image:: doc/figures/scree_plots.png
-    :height: 50
-    :width: 100
+    :height: 25
+    :width: 50
 
 .. code:: python
 
@@ -80,16 +79,16 @@ Example
                                 blocks={'x': X, 'y': Y})
 
 .. image:: doc/figures/jive_estimate_heatmaps.png
-    :height: 25
-    :width: 100
+    :height: 100
+    :width: 50
 
 .. code:: python
 
     ajive.plot_joint_diagnostic()
 
 .. image:: doc/figures/jive_diagnostic.png
-    :height: 50
-    :width: 50
+    :height: 25
+    :width: 25
 
 
 For some more example code see `this notebook`_.
