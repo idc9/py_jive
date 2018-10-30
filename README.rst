@@ -53,8 +53,8 @@ Example
     data_block_heatmaps([X, Y])
 
 .. image:: doc/figures/data_heatmaps.png
-    :height: 200
-    :width: 200
+    :height: 50
+    :width: 100
 
 .. code:: python
 
@@ -67,8 +67,8 @@ Example
 
 
 .. image:: doc/figures/scree_plots.png
-    :height: 200
-    :width: 200
+    :height: 50
+    :width: 100
 
 .. code:: python
 
@@ -80,16 +80,16 @@ Example
                                 blocks={'x': X, 'y': Y})
 
 .. image:: doc/figures/jive_estimate_heatmaps.png
-    :height: 200
-    :width: 200
+    :height: 25
+    :width: 100
 
 .. code:: python
 
     ajive.plot_joint_diagnostic()
 
 .. image:: doc/figures/jive_diagnostic.png
-    :height: 200
-    :width: 200
+    :height: 50
+    :width: 50
 
 
 For some more example code see `this notebook`_.
