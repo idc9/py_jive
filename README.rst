@@ -53,10 +53,11 @@ Example
     data_block_heatmaps([X, Y])
 
 .. image:: doc/figures/data_heatmaps.png
-    :height: 400
-    :width: 400
+    :height: 200
+    :width: 200
 
 .. code:: python
+
     # determine initial signal ranks by inspecting scree plots
     plt.figure(figsize=[10, 5])
     plt.subplot(1, 2, 1)
@@ -66,10 +67,11 @@ Example
 
 
 .. image:: doc/figures/scree_plots.png
-    :height: 400
-    :width: 400
+    :height: 200
+    :width: 200
 
 .. code:: python
+
     ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3})
     ajive.fit(blocks={'x': X, 'y': Y})
 
@@ -78,15 +80,16 @@ Example
                                 blocks={'x': X, 'y': Y})
 
 .. image:: doc/figures/jive_estimate_heatmaps.png
-    :height: 400
-    :width: 400
+    :height: 200
+    :width: 200
 
 .. code:: python
+
     ajive.plot_joint_diagnostic()
 
 .. image:: doc/figures/jive_diagnostic.png
-    :height: 400
-    :width: 400
+    :height: 200
+    :width: 200
 
 
 For some more example code see `this notebook`_.
