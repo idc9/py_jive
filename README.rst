@@ -41,6 +41,7 @@ Example
 =======
 
 .. code:: python
+
     from jive.AJIVE import AJIVE
     from jive.PCA import PCA
     from jive.ajive_fig2 import generate_data_ajive_fig2
