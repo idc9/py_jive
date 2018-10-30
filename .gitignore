@@ -14,3 +14,4 @@ __pycache__
 .ipynb_checkpoints
 .Rhistory
 /dep/
+make_readme_figures.py
