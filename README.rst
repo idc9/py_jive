@@ -62,10 +62,12 @@ Example
     ajive.fit(blocks={'x': X, 'y': Y})
 
     plt.figure(figsize=[10, 20])
-    jive_full_esimate_heatmaps(ajive.get_full_block_estimates(),
-                               blocks={'x':X, 'y': Y})
+    jive_full_estimate_heatmaps(ajive.get_full_block_estimates(),
+                                blocks={'x': X, 'y': Y})
 
     ajive.plot_joint_diagnostic()
+
+.. image:: doc/figures/jive_diagnostic.png
 
 
 For some more example code see `this notebook`_.
