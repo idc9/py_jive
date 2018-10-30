@@ -11,7 +11,7 @@ plt.savefig('figures/data_heatmaps.png', bbox_inches='tight')
 plt.close()
 
 # determine initial signal ranks by inspecting scree plots
-plt.figure(figsize=[8, 3])
+plt.figure(figsize=[8.4, 3])
 plt.subplot(1, 2, 1)
 PCA().fit(X).plot_scree()
 plt.subplot(1, 2, 2)
@@ -28,7 +28,7 @@ jive_full_estimate_heatmaps(ajive.get_full_block_estimates(),
 plt.savefig('figures/jive_estimate_heatmaps.png', bbox_inches='tight')
 plt.close()
 
-plt.figure(figsize=[8, 8])
+plt.figure(figsize=[7, 7])
 ajive.plot_joint_diagnostic()
 plt.savefig('figures/jive_diagnostic.png', bbox_inches='tight')
 plt.close()
