@@ -41,7 +41,6 @@ Example
 =======
 
 .. code:: python
-
     from jive.AJIVE import AJIVE
     from jive.PCA import PCA
     from jive.ajive_fig2 import generate_data_ajive_fig2
@@ -50,7 +49,13 @@ Example
     # %matplotlib inline
 
     X, Y = generate_data_ajive_fig2()
+    data_block_heatmaps([X, Y])
 
+.. image:: doc/figures/data_heatmaps.png
+    :height: 400
+    :width: 400
+
+.. code:: python
     # determine initial signal ranks by inspecting scree plots
     plt.figure(figsize=[10, 5])
     plt.subplot(1, 2, 1)
@@ -58,6 +63,12 @@ Example
     plt.subplot(1, 2, 2)
     PCA().fit(Y).plot_scree()
 
+
+.. image:: doc/figures/scree_plots.png
+    :height: 400
+    :width: 400
+
+.. code:: python
     ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3})
     ajive.fit(blocks={'x': X, 'y': Y})
 
@@ -65,9 +76,16 @@ Example
     jive_full_estimate_heatmaps(ajive.get_full_block_estimates(),
                                 blocks={'x': X, 'y': Y})
 
+.. image:: doc/figures/jive_estimate_heatmaps.png
+    :height: 400
+    :width: 400
+
+.. code:: python
     ajive.plot_joint_diagnostic()
 
 .. image:: doc/figures/jive_diagnostic.png
+    :height: 400
+    :width: 400
 
 
 For some more example code see `this notebook`_.
