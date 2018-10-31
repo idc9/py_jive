@@ -10,13 +10,7 @@ from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_o
 from jive.wedin_bound import get_wedin_samples
 from jive.random_direction import sample_randdir
 from jive.viz.diagnostic_plot import plot_joint_diagnostic
-
 from jive.PCA import PCA
-
-# TODOs
-# - finish documentation
-# - add test cases
-# - make documentation follow sklearn conventions more closely
 
 
 class AJIVE(object):
@@ -61,6 +55,11 @@ class AJIVE(object):
     precomp_randdir_samples {None,  array-like}
         Precomputed random direction samples.
 
+    n_jobs: int, None
+        Number of jobs for parallel processing wedin samples and random
+        direction samples using sklearn.externals.joblib.Parallel.
+        If None, will not use parallel processing.
+
     Attributes
     ----------
 
@@ -70,44 +69,53 @@ class AJIVE(object):
     blocks: dict of BlockSpecificResults
         The block specific results.
 
-
-    centers_:
-
-
-    sv_threshold_:
+    centers_: dict
+        The the centering vectors computed for each matrix.
 
 
-    all_joint_svs_:
+    sv_threshold_: dict
+        The singular value thresholds computed for each block based on the
+        initial SVD. Used to estimate the individual ranks.
 
+    all_joint_svals_: list
+        All singular values from the concatenated joint matrix.
 
-    random_sv_samples_:
+    random_sv_samples_: list of floats
+        Random singular value samples from for random direction bound.
 
-    wedin_samples_:
+    rand_cutoff_: float
+        Singular value squared cutoff for the random direction bound.
 
-    wedin_cutoff_:
+    wedin_samples_: dict of lists of floats
+        The wedin samples for each block.
 
-    rand_cutoff_:
+    wedin_cutoff_: float
+        Singular value squared cutoff for the wedin bound.
 
-    svsq_cutoff_:
+    svalsq_cutoff_: float
+        max(rand_cutoff_, wedin_cutoff_)
 
-    joint_rank_wedin_est_:
+    joint_rank_wedin_est_: int
+        The joint rank estimated using the wedin/random direction bound.
 
-    joint_rank:
+    joint_rank: int
+        The estimated joint rank.
 
-    indiv_ranks:
+    indiv_ranks: dict of ints
+        The individual ranks for each block.
 
     """
 
     def __init__(self,
                  init_signal_ranks,
                  joint_rank=None, indiv_ranks=None,
-                 center='mean',
+                 center=True,
                  reconsider_joint_components=True,
                  wedin_percentile=95, wedin_n_samples=1000,
                  precomp_wedin_samples=None,
                  randdir_percentile=5, randdir_n_samples=1000,
                  precomp_randdir_samples=None,
-                 store_full=True):
+                 store_full=True, n_jobs=None):
 
         self.init_signal_ranks = init_signal_ranks
         self.joint_rank = joint_rank
@@ -127,6 +135,8 @@ class AJIVE(object):
 
         self.store_full = store_full
 
+        self.n_jobs = n_jobs
+
     def __repr__(self):
         # return 'JIVE'
         if self.is_fit:
@@ -141,18 +151,29 @@ class AJIVE(object):
 
     def fit(self, blocks, precomp_init_svd=None):
         """
+        Fits the AJIVE decomposition.
+
         Parameters
         ----------
-        blocks (list, dict): the data matrices.
+        blocks: list, dict
+            The data matrices. If dict, will name blocks by keys, otherwise
+            blocks are named by 0, 1, ...K. Data matrices must have observations
+            on the rows and have the same number of observations i.e. the
+            kth data matrix is shape (n_samples, n_features[k]).
 
-        precomp_init_svd (list, dict, None): precomputed initial SVD.
+        precomp_init_svd: {list, dict, None}, optional
+            Precomputed initial SVD. Must have one entry for each data block.
+            The SVD should be a 3 tuple (scores, svals, loadings), see output
+            of jive.utils.svd_wrapper for formatting details.
+
         """
         blocks, self.init_signal_ranks, self.indiv_ranks, precomp_init_svd,\
-            obs_names, var_names = arg_checker(blocks,
-                                               self.init_signal_ranks,
-                                               self.joint_rank,
-                                               self.indiv_ranks,
-                                               precomp_init_svd)
+            self.center, obs_names, var_names = arg_checker(blocks,
+                                                            self.init_signal_ranks,
+                                                            self.joint_rank,
+                                                            self.indiv_ranks,
+                                                            precomp_init_svd,
+                                                            self.center)
         block_names = list(blocks.keys())
         num_obs = list(blocks.values())[0].shape[0]
 
@@ -160,7 +181,7 @@ class AJIVE(object):
         self.centers_ = {}
         for bn in block_names:
             blocks[bn], self.centers_[bn] = centering(blocks[bn],
-                                                      method=self.center)
+                                                      method=self.center[bn])
 
         ################################################################
         # step 1: initial signal space extraction by SVD on each block #
@@ -176,7 +197,7 @@ class AJIVE(object):
                 U, D, V = svd_wrapper(blocks[bn], self.init_signal_ranks[bn] + 1)
             else:
                 U = precomp_init_svd[bn]['scores']
-                D = precomp_init_svd[bn]['svs']
+                D = precomp_init_svd[bn]['svals']
                 V = precomp_init_svd[bn]['loadings']
 
             # The SV threshold is halfway between the init_signal_ranks[bn]th
@@ -186,7 +207,7 @@ class AJIVE(object):
                                       + D[self.init_signal_ranks[bn]])/2
 
             init_signal_svd[bn] = {'scores': U[:, 0:self.init_signal_ranks[bn]],
-                                   'svs': D[0:self.init_signal_ranks[bn]],
+                                   'svals': D[0:self.init_signal_ranks[bn]],
                                    'loadings': V[:, 0:self.init_signal_ranks[bn]]}
 
         ##################################
@@ -197,8 +218,8 @@ class AJIVE(object):
 
         # SVD of joint signal matrix
         joint_scores_matrix = np.bmat([init_signal_svd[bn]['scores'] for bn in block_names])
-        joint_scores, joint_svs, joint_loadings = svd_wrapper(joint_scores_matrix)
-        self.all_joint_svs_ = deepcopy(joint_svs)
+        joint_scores, joint_svals, joint_loadings = svd_wrapper(joint_scores_matrix)
+        self.all_joint_svals_ = deepcopy(joint_svals)
 
         # estimate joint rank using wedin bound and random direction if a
         # joint rank estimate has not already been provided
@@ -210,7 +231,8 @@ class AJIVE(object):
                 self.random_sv_samples_ = \
                     sample_randdir(num_obs,
                                    signal_ranks=list(self.init_signal_ranks.values()),
-                                   num_samples=self.randdir_n_samples)
+                                   R=self.randdir_n_samples,
+                                   n_jobs=self.n_jobs)
 
             # if the wedin samples are not already provided compute them
             if self.wedin_samples_ is None:
@@ -219,10 +241,11 @@ class AJIVE(object):
                     self.wedin_samples_[bn] = \
                         get_wedin_samples(X=blocks[bn],
                                           U=init_signal_svd[bn]['scores'],
-                                          D=init_signal_svd[bn]['svs'],
+                                          D=init_signal_svd[bn]['svals'],
                                           V=init_signal_svd[bn]['loadings'],
                                           rank=self.init_signal_ranks[bn],
-                                          num_samples=self.wedin_n_samples)
+                                          R=self.wedin_n_samples,
+                                          n_jobs=self.n_jobs)
 
             self.wedin_sv_samples_ = len(blocks) - \
                 np.array([sum(self.wedin_samples_[bn][i] ** 2 for bn in block_names)
@@ -234,24 +257,28 @@ class AJIVE(object):
                                                self.wedin_percentile)
             self.rand_cutoff_ = np.percentile(self.random_sv_samples_,
                                               self.randdir_percentile)
-            self.svsq_cutoff_ = max(self.wedin_cutoff_, self.rand_cutoff_)
-            self.joint_rank_wedin_est_ = sum(joint_svs ** 2 > self.svsq_cutoff_)
+            self.svalsq_cutoff_ = max(self.wedin_cutoff_, self.rand_cutoff_)
+            self.joint_rank_wedin_est_ = sum(joint_svals ** 2 > self.svalsq_cutoff_)
             self.joint_rank = deepcopy(self.joint_rank_wedin_est_)
 
         # check identifiability constraint and possibly remove some
         # joint components
         if self.reconsider_joint_components:
-            joint_scores, joint_svs, joint_loadings, self.joint_rank = \
+            joint_scores, joint_svals, joint_loadings, self.joint_rank = \
                 reconsider_joint_components(blocks, self.sv_threshold_,
-                                            joint_scores, joint_svs, joint_loadings,
+                                            joint_scores, joint_svals, joint_loadings,
                                             self.joint_rank)
 
         # TODO: include center?
+        # TODO: comp_names, var_names
         # The common joint space has now been estimated
         self.common = PCA.from_precomputed(scores=joint_scores[:, 0:self.joint_rank],
-                                           svals=joint_svs[0:self.joint_rank],
+                                           svals=joint_svals[0:self.joint_rank],
                                            loadings=joint_loadings[:, 0:self.joint_rank],
                                            obs_names=obs_names)
+
+        self.common.set_comp_names(['common_comp_{}'.format(i)
+                                    for i in range(self.common.rank)])
 
         #######################################
         # step 3: compute final decomposition #
@@ -280,7 +307,7 @@ class AJIVE(object):
 
             block_specific[bn]['joint'] = {'full': J,
                                            'scores': U,
-                                           'svs': D,
+                                           'svals': D,
                                            'loadings': V,
                                            'rank': self.joint_rank}
 
@@ -328,7 +355,7 @@ class AJIVE(object):
 
             block_specific[bn]['individual'] = {'full': I,
                                                 'scores': U,
-                                                'svs': D,
+                                                'svals': D,
                                                 'loadings': V,
                                                 'rank': rank}
 
@@ -376,7 +403,7 @@ class AJIVE(object):
         if not self.is_fit:
             raise ValueError('Decomposition has not yet been computed')
 
-        plot_joint_diagnostic(joint_svs=self.all_joint_svs_,
+        plot_joint_diagnostic(joint_svals=self.all_joint_svals_,
                               wedin_sv_samples=self.wedin_sv_samples_,
                               random_sv_samples=self.random_sv_samples_,
                               wedin_percentile=self.wedin_percentile,
@@ -390,6 +417,14 @@ class AJIVE(object):
         return load(fpath)
 
     def get_full_block_estimates(self):
+        """
+
+        Output
+        ------
+        full: dict of dict of np.arrays
+        The joint, individual, and noise full estimates for each block.
+
+        """
         full = {}
         for bn in self.block_names:
             full[bn] = {'joint': self.blocks[bn].joint.full_,
@@ -399,9 +434,13 @@ class AJIVE(object):
         return full
 
     def results_dict(self):
+        """
+        Returns all estimates as a dicts.
+
+        """
         results = {}
         results['common'] = {'scores': self.common.scores_,
-                             'svs': self.common.svs_,
+                             'svals': self.common.svals_,
                              'loadings': self.common.loadings_,
                              'rank': self.common.rank}
 
@@ -410,13 +449,13 @@ class AJIVE(object):
             indiv = self.blocks[bn].individual
 
             results[bn] = {'joint': {'scores': joint.scores_,
-                                     'svs': joint.svs_,
+                                     'svals': joint.svals_,
                                      'loadings': joint.loadings_,
                                      'rank': joint.rank,
                                      'full': joint.full_},
 
                            'individual': {'scores': indiv.scores_,
-                                          'svs': indiv.svs_,
+                                          'svals': indiv.svals_,
                                           'loadings': indiv.loadings_,
                                           'rank': indiv.rank,
                                           'full': indiv.full_},
@@ -437,21 +476,8 @@ class AJIVE(object):
             raise ValueError('Decomposition has not yet been computed')
 
         joint_rank = self.common.rank
-        indiv_ranks = {bn: self.blocks[bn].rank for bn in self.block_names}
+        indiv_ranks = {bn: self.blocks[bn].individual.rank for bn in self.block_names}
         return joint_rank, indiv_ranks
-
-
-# def _check_block_formatting(x, blocks):
-#     assert type(x) == type(blocks)
-#     assert len(x) == len(x)
-
-#     if type(x) == dict:
-#         assert set(x.keys()) == set(blocks.keys())
-
-#     if type(x) == list:
-#         x = {i: x[i] for i in range(len(x))}
-
-#     return x
 
 
 def _dict_formatting(x):
@@ -463,7 +489,8 @@ def _dict_formatting(x):
     return {n: x[n] for n in names}
 
 
-def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks, precomp_init_svd):
+def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks,
+                precomp_init_svd, center):
     """
 
     """
@@ -506,6 +533,12 @@ def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks, precomp_init
         precomp_init_svd = {bn: None for bn in block_names}
     precomp_init_svd = _dict_formatting(precomp_init_svd)
     assert set(precomp_init_svd.keys()) == set(block_names)
+    for bn in block_names:
+        udv = precomp_init_svd[bn]
+        if udv is not None and not hasattr(udv, 'keys'):
+            precomp_init_svd[bn] = {'scores': udv[0],
+                                    'svals': udv[1],
+                                    'loadings': udv[2]}
 
     # TODO: check either None or SVD provided
     # TODO: check correct SVD formatting
@@ -543,7 +576,15 @@ def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks, precomp_init
         assert indiv_ranks[k] is None or type(indiv_ranks[k]) in [int, float]
         # TODO: better check for numeric
 
-    return blocks, init_signal_ranks, indiv_ranks, precomp_init_svd, obs_names, var_names
+    ##########
+    # center #
+    ##########
+    if type(center) == bool:
+        center = {bn: center for bn in block_names}
+    center = _dict_formatting(center)
+
+    return blocks, init_signal_ranks, indiv_ranks, precomp_init_svd, center,\
+        obs_names, var_names
 
 
 def indiv_space_for_sparse(X, joint_scores, joint_rank, signal_rank, sv_threshold):
@@ -590,7 +631,7 @@ def indiv_space_for_sparse(X, joint_scores, joint_rank, signal_rank, sv_threshol
 
 
 def reconsider_joint_components(blocks, sv_threshold,
-                                joint_scores, joint_svs, joint_loadings,
+                                joint_scores, joint_svals, joint_loadings,
                                 joint_rank):
     """
     Checks the identifiability constraint on the joint singular values
@@ -617,8 +658,8 @@ def reconsider_joint_components(blocks, sv_threshold,
     joint_rank = len(to_keep)
     joint_scores = joint_scores[:, list(to_keep)]
     joint_loadings = joint_loadings[:, list(to_keep)]
-    joint_svs = joint_svs[list(to_keep)]
-    return joint_scores, joint_svs, joint_loadings, joint_rank
+    joint_svals = joint_svals[list(to_keep)]
+    return joint_scores, joint_svals, joint_loadings, joint_rank
 
 
 class BlockSpecificResults():
@@ -675,20 +716,24 @@ class BlockSpecificResults():
         self.joint = PCA.from_precomputed(n_components=joint['rank'],
                                           scores=joint['scores'],
                                           loadings=joint['loadings'],
-                                          svals=joint['svs'],
+                                          svals=joint['svals'],
                                           obs_names=obs_names,
                                           var_names=var_names,
                                           m=m)
         self.joint.full_ = joint['full']
+        self.joint.set_comp_names(['joint_comp_{}'.format(i)
+                                   for i in range(self.joint.rank)])
 
         self.individual = PCA.from_precomputed(n_components=individual['rank'],
                                                scores=individual['scores'],
                                                loadings=individual['loadings'],
-                                               svals=individual['svs'],
+                                               svals=individual['svals'],
                                                obs_names=obs_names,
                                                var_names=var_names,
                                                m=m)
         self.individual.full_ = individual['full']
+        self.individual.set_comp_names(['indiv_comp_{}'.format(i)
+                                        for i in range(self.individual.rank)])
 
         self.noise_ = noise
 

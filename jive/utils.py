@@ -14,26 +14,38 @@ def svd_wrapper(X, rank=None):
 
     Parameters
     ----------
-    X: either dense or sparse
+    X: array-like,  shape (N, D)
+
     rank: rank of the desired SVD (required for sparse matrices)
 
     Output
     ------
     U, D, V
-    the columns of U are the left singular vectors
-    the COLUMNS of V are the left singular vectors
+
+    U: array-like, shape (N, rank)
+        Orthonormal matrix of left singular vectors.
+
+    D: list, shape (rank, )
+        Singular values in non-increasing order (e.g. D[0] is the largest).
+
+    V: array-like, shape (D, rank)
+        Orthonormal matrix of right singular vectors
 
     """
+    full = False
+    if rank is None or rank == min(X.shape):
+        full = True
+
     if isinstance(X, LinearOperator):
         scipy_svds = svds(convert2scipy(X), rank)
         U, D, V = fix_scipy_svds(scipy_svds)
 
-    elif issparse(X) or rank is not None:
+    elif issparse(X) or not full:
+        assert rank <= min(X.shape) - 1  # svds cannot compute the full svd
         scipy_svds = svds(X, rank)
         U, D, V = fix_scipy_svds(scipy_svds)
 
     else:
-        # TODO: implement partial SVD
         U, D, V = full_svd(X, full_matrices=False)
         V = V.T
 
@@ -84,10 +96,3 @@ def centering(X, method='mean'):
 
     else:
         return X - center, center
-
-
-def pca_wrapper(X, rank=None, center_method='mean'):
-    """
-    PCA = mean center then SVD
-    """
-    return svd_wrapper(centering(X, method=center_method)[0], rank=rank)

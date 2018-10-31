@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
 
 
-def plot_joint_diagnostic(joint_svs,
+def plot_joint_diagnostic(joint_svals,
                           wedin_sv_samples,
                           random_sv_samples,
                           wedin_percentile=5,
@@ -21,7 +21,7 @@ def plot_joint_diagnostic(joint_svs,
         rand_lw = 1
         wedin_lw = 3
 
-    joint_rank_est = sum(joint_svs ** 2 > svsq_cutoff)
+    joint_rank_est = sum(joint_svals ** 2 > svsq_cutoff)
 
     # plot wedin CDF
     wedin_xvals, wedin_cdf = get_cdf_vals(wedin_sv_samples)
@@ -55,7 +55,7 @@ def plot_joint_diagnostic(joint_svs,
     # plot joint singular values
     first_joint = True
     first_nonjoint = True
-    for sv in joint_svs:
+    for sv in joint_svals:
         sv_sq = sv**2
 
         if sv_sq > svsq_cutoff:

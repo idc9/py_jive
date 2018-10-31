@@ -1,38 +1,50 @@
 import numpy as np
+from sklearn.externals.joblib import Parallel, delayed
 
 
-def get_wedin_samples(X, U, D, V, rank, num_samples=1000):
+def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None):
     """
-    TODO: rename arguments
     Computes the wedin bound using the sample-project procedure. This method
     does not require the full SVD.
 
     Parameters
     ----------
-    X: the data block
-    U, D, V: the partial SVD of X
-    rank: the rank of the signal space
-    num_samples: number of samples for resampling procedure
+    X: array-like, shape (n_samples, n_features)
+        The data block.
+
+    U, D, V:
+        The partial SVD of X
+
+    rank: int
+        The rank of the signal space
+
+    R: int
+        Number of samples for resampling procedure
+
+    n_jobs: int, None
+        Number of jobs for parallel processing using
+        sklearn.externals.joblib.Parallel. If None, will not use parallel
+        processing.
+
     """
 
     # resample for U and V
     U_norm_samples = norms_sample_project(X=X.T,
-                                          B=U[:, 0:rank],
-                                          rank=rank,
-                                          num_samples=num_samples)
+                                          basis=U[:, 0:rank],
+                                          R=R, n_jobs=n_jobs)
 
     V_norm_samples = norms_sample_project(X=X,
-                                          B=V[:, 0:rank],
-                                          rank=rank,
-                                          num_samples=num_samples)
+                                          basis=V[:, 0:rank],
+                                          R=R, n_jobs=n_jobs)
 
     sigma_min = D[rank - 1]  # TODO: double check -1
-    wedin_bound_samples = [min(max(U_norm_samples[s], V_norm_samples[s])/sigma_min, 1) for s in range(num_samples)]
+    wedin_bound_samples = [min(max(U_norm_samples[r], V_norm_samples[r])/sigma_min, 1)
+                           for r in range(R)]
 
     return wedin_bound_samples
 
 
-def norms_sample_project(X, B, rank, num_samples=1000):
+def norms_sample_project(X, basis, R=1000, n_jobs=None):
     """
     Samples vectors from space orthogonal to signal space as follows
     - sample random vector from isotropic distribution
@@ -40,35 +52,50 @@ def norms_sample_project(X, B, rank, num_samples=1000):
 
     Parameters
     ---------
-    X: the observed data
+    X:
+        Rhe observed data
 
-    B: the basis for the signal col/rows space (e.g. the left/right singular vectors)
+    B:
+        Rhe basis for the signal col/rows space (e.g. the left/right singular vectors)
 
-    rank: number of columns to resample
+    rank: int
+        Number of columns to resample
 
-    num_samples: how many resamples
+    R: int
+        Number of samples
+
+
+    n_jobs: int, None
+        Number of jobs for parallel processing using
+        sklearn.externals.joblib.Parallel. If None, will not use parallel
+        processing.
 
     Output
     ------
     an array of the resampled norms
     """
-    dim = B.shape[0]
 
-    sampled_norms = [0]*num_samples
+    if n_jobs is not None:
+        samples = Parallel(n_jobs=n_jobs)\
+            (delayed(_get_sample)(X, basis) for i in range(R))
+    else:
+        samples = [_get_sample(X, basis) for r in range(R)]
 
-    for s in range(num_samples):
+    return np.array(samples)
 
-        # sample from isotropic distribution
-        vecs = np.random.normal(size=(dim, rank))
 
-        # project onto space orthogonal to cols of B
-        # vecs = (np.eye(dim) - np.dot(B, B.T)).dot(vecs)
-        vecs = vecs - np.dot(B, np.dot(B.T, vecs))
+def _get_sample(X, basis):
+    dim, rank = basis.shape
 
-        # orthonormalize
-        vecs, _ = np.linalg.qr(vecs)
+    # sample from isotropic distribution
+    vecs = np.random.normal(size=(dim, rank))
 
-        # compute  operator L2 norm
-        sampled_norms[s] = np.linalg.norm(X.dot(vecs), ord=2)
+    # project onto space orthogonal to cols of B
+    # vecs = (np.eye(dim) - np.dot(basis, basis.T)).dot(vecs)
+    vecs = vecs - np.dot(basis, np.dot(basis.T, vecs))
 
-    return sampled_norms
+    # orthonormalize
+    vecs, _ = np.linalg.qr(vecs)
+
+    # compute  operator L2 norm
+    return np.linalg.norm(X.dot(vecs), ord=2)
