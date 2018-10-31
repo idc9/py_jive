@@ -32,29 +32,29 @@ class PCA(object):
         rank of the decomposition. If None, will compute full PCA.
 
     center: str, None
-        how to center the columns of X. If None, will not center the
+        How to center the columns of X. If None, will not center the
         columns (i.e. just computes the SVD).
 
 
     Attributes
     ----------
-    scores_:
+    scores_: pd.DataFrame, shape (n_samples, n_components)
+        The orthonormal matrix of (normalized) scores.
 
-    loadings_:
+    loadings_: pd.DataFrame, shape (n_features, n_components)
+        The orthonormal matrix of loadings.
 
-    svals_:
+    svals_: pd.Series, shape (n_components, )
+        The singular values.
 
-    m_:
+    m_: np.array, shape (n_features, )
+        The vector used to center the data.
 
-    frob_norm_
+    frob_norm_: float
+        The Frobenius norm of the training data matrix X.
 
-    obs_names_:
-
-    var_names:
-
-    comp_names_:
-
-    shape_:
+    shape_: tuple length 2
+        The shape of the original data matrix.
     """
     def __init__(self, n_components=None, center='mean'):
         self.n_components = n_components
@@ -64,11 +64,54 @@ class PCA(object):
         return {'n_components': self.n_components,
                 'center': self.center}
 
+    def __repr__(self):
+        if not hasattr(self, 'scores_'):
+            return 'PCA object, nothing has been computed yet'
+        else:
+            return 'Rank {} PCA of a {} matrix'.format(self.n_components, self.shape_)
+
+    def fit(self, X):
+        """
+        Computes the PCA decomposition of X.
+
+        Parameters
+        ----------
+        X: {array-like, sparse matrix}, shape (n_samples, n_features)
+            Fit PCA with data matrix X. If X is a pd.DataFrame, the observation
+            and feature names will be extracted from its index/columns.
+            Note X can be either dense or sparse.
+
+        """
+        self.shape_, obs_names, var_names, self.n_components, \
+            = _arg_checker(X, self.n_components)
+
+        # possibly mean center X
+        X, self.m_ = centering(X, self.center)
+
+        # compute SVD
+        U, D, V = svd_wrapper(X, self.n_components)
+
+        # compute variance explained
+        if self.n_components == min(X.shape):
+            self.frob_norm_ = np.sqrt(sum(D ** 2))
+        else:
+            self.frob_norm_ = _safe_frob_norm(X)
+        self.var_expl_prop_ = D ** 2 / self.frob_norm_ ** 2
+        self.var_expl_cum_ = np.cumsum(self.var_expl_prop_)
+
+        if self.n_components is None:
+            self.n_components = self.scores_.shape[1]
+
+        self.scores_, self.svals_, self.loadings_ = \
+            svd2pd(U, D, V, obs_names=obs_names, var_names=var_names)
+
+        return self
+
     @classmethod
     def from_precomputed(cls, n_components=None, center=None,
                          scores=None, loadings=None, svals=None,
-                         obs_names=None, var_names=None, m=None,
-                         frob_norm=None, var_expl_prop=None):
+                         obs_names=None, var_names=None, comp_names=None,
+                         m=None, frob_norm=None, var_expl_prop=None):
 
         """
         Loads the PCA object from a precomputed PCA decomposition.
@@ -86,6 +129,26 @@ class PCA(object):
             shape[1] = loadings.shape[0]
         x.shape_ = shape
 
+        if type(scores) != pd.DataFrame:
+            if var_names is None:
+                obs_names = _default_obs_names(scores.shape[0])
+            if comp_names is None:
+                comp_names = _default_comp_names(scores.shape[1])
+            scores = pd.DataFrame(scores, index=obs_names,
+                                  columns=comp_names)
+
+        if type(svals) != pd.Series:
+            if comp_names is None:
+                comp_names = _default_comp_names(loadings.shape[1])
+            svals = pd.Series(svals, index=comp_names)
+
+        if type(loadings) != pd.DataFrame:
+            if var_names is None:
+                var_names = _default_var_names(loadings.shape[0])
+            if comp_names is None:
+                comp_names = _default_comp_names(loadings.shape[1])
+            loadings = pd.DataFrame(loadings, index=var_names,
+                                    columns=comp_names)
         x.scores_ = scores
         x.loadings_ = loadings
         x.svals_ = svals
@@ -99,10 +162,6 @@ class PCA(object):
             x.var_expl_cum_ = np.cumsum(var_expl_prop)
         else:
             x.var_expl_cum_ = None
-
-        x.obs_names_ = obs_names
-        x.var_names_ = var_names
-        x.comp_names_ = ['comp_{}'.format(i) for i in range(x.n_components)]
 
         return x
 
@@ -137,85 +196,108 @@ class PCA(object):
         """
         return load(fpath)
 
-    def __repr__(self):
-        if not hasattr(self, 'scores_'):
-            return 'PCA object, nothing has been computed yet'
-        else:
-            return 'Rank {} PCA of a {} matrix'.format(self.n_components, self.shape_)
-
-    def fit(self, X):
-        """
-
-        Parameters
-        ----------
-        X: {array-like, sparse matrix}, shape (n_samples, n_features)
-            Fit PCA with data matrix X. If X is a pd.DataFrame, obs_names_
-            will be set to X.index and var_names_ will be set to X.columns.
-            Note X can be either dense or sparse.
-
-        """
-        self.shape_, self.obs_names_, self.var_names_ = _arg_checker(X, self.n_components)
-
-        # possibly mean center X
-        X, self.m_ = centering(X, self.center)
-
-        # compute SVD
-        self.scores_, self.svals_, self.loadings_ = svd_wrapper(X, self.n_components)
-
-        # compute variance explained
-        if self.n_components == min(X.shape):
-            self.frob_norm_ = np.sqrt(sum(self.svals_ ** 2))
-        else:
-            self.frob_norm_ = _safe_frob_norm(X)
-        self.var_expl_prop_ = self.svals_ ** 2 / self.frob_norm_ ** 2
-        self.var_expl_cum_ = np.cumsum(self.var_expl_prop_)
-
-        if self.n_components is None:
-            self.n_components = self.scores_.shape[1]
-
-        self.comp_names_ = ['comp_{}'.format(i) for i in range(self.n_components)]
-        return self
-
     @property
     def rank(self):  # synonym of n_components
         return self.n_components
 
-    def scores(self):
+    def obs_names(self):
         """
-        Returns the (normalized) scores matrix, U in R^{n x K},
-        as a pd.DataFrame indexed by var_names.
+        Returns the observation names.
         """
-        return pd.DataFrame(self.scores_, index=self.obs_names_,
-                            columns=self.comp_names_)
+        return np.array(self.scores_.index)
 
-    @property
-    def unnorm_scores_(self):
-        return np.dot(self.scores_, np.diag(self.svals_))
+    def comp_names(self):
+        """
+        Returns the component names.
+        """
+        return np.array(self.scores_.columns)
 
-    def unnorm_scores(self):
+    def var_names(self):
         """
-        Returns the unnormalized scores matrix, UD in R^{n x K},
-        as a pd.DataFrame indexed by var_names.
+        Returns the variable names.
         """
-        return pd.DataFrame(self.unnorm_scores_,
-                            index=self.obs_names_,
-                            columns=self.comp_names_)
+        return np.array(self.loadings_.index)
 
-    def loadings(self):
+    def set_comp_names(self, comp_names):
         """
-        Returns the loadings matrix, V in R^{d x K},
-        as a pd.DataFrame indexed by var_names.
+        Resets the component names.
         """
-        return pd.DataFrame(self.loadings_, index=self.var_names_,
-                            columns=self.comp_names_)
+        self.scores_.columns = comp_names
+        self.svals_.index = comp_names
+        self.loadings_.columns = comp_names
+        return self
+
+    def scores(self, norm=True, np=False):
+        """
+
+        Returns the scores.
+
+        Parameters
+        ----------
+        norm: bool
+            If true, returns normalized scores. Otherwise, returns unnormalized
+            scores.
+
+        np: bool
+            If true, returns scores as a numpy array. Otherwise, returns pandas.
+
+        """
+        if norm:  # normalized scores
+            if np:
+                return self.scores_.values
+            else:
+                return self.scores_
+        else:
+
+            unnorm_scores = _unnorm_scores(self.scores_, self.svals_)
+            if np:
+                return unnorm_scores
+            else:
+                return pd.DataFrame(unnorm_scores,
+                                    index=self.scores_.index,
+                                    columns=self.scores_.columns)
+
+    def loadings(self, np=False):
+        if np:
+            return self.loadings_.values
+        else:
+            return self.loadings_
+
+    def svals(self, np=False):
+        if np:
+            return self.svals_.values
+        else:
+            return self.svals_
+
+    def get_UDV(self):
+        """
+        Output
+        ------
+        U, D, V
+
+        U: np.array (n_samples, n_components)
+            scores
+
+        D: np.array (n_components, )
+            singular values
+
+        V: np.array (n_features, n_components)
+            loadings matrix
+        """
+        return self.scores_.values, self.svals_.values, self.loadings_.values
 
     def predict_scores(self, Y):
         """
-        Projects a new data matrix Y onto the loadings
+        Projects a new data matrix Y onto the loadings.
+
+        Parameters
+        ----------
+        Y: array-like, shape (n_new_samples, n_features)
         """
+        s = np.dot(Y, self.loadings_)
         if self.center:
-            Y = Y - self.m_
-        return np.dot(Y, self.loadings_)
+            s -= np.dot(self.m_, self.loadings_)
+        return s
 
     def reconstruct_from_scores(self, scores):
         return pca_reconstruct(u=scores, D=self.svals_, V=self.loadings_,
@@ -233,7 +315,7 @@ class PCA(object):
         """
         if type(y) == int:
             assert (0 <= y) and (y <= self.shape_[0])
-            u = self.scores_[y, :]
+            u = self.scores_.values[y, :]
 
         else:
             u = np.dot(self.loadings_, y)
@@ -289,12 +371,7 @@ class PCA(object):
         **kwargs:
             keyword arguments for plt.hist
         """
-        if norm:
-            scores = self.scores()
-        else:
-            scores = self.unnorm_scores()
-
-        plot_scores_hist(scores.iloc[:, comp], comp=comp, **kwargs)
+        plot_scores_hist(self.scores(norm=norm).iloc[:, comp], comp=comp, **kwargs)
 
     def plot_scree(self, log=False, diff=False, nticks=10):
         """
@@ -311,7 +388,7 @@ class PCA(object):
         nticks: int
             Number of tick marks to show.
         """
-        scree_plot(self.svals_, log=log, diff=diff, nticks=10)
+        scree_plot(self.svals_.values, log=log, diff=diff, nticks=10)
 
     def plot_var_expl_prop(self, nticks=10):
         """
@@ -336,7 +413,7 @@ class PCA(object):
         plot_var_expl_cum(self.var_expl_cum_)
 
     def plot_scores(self, norm=True,
-                    start=0, n_components=3,  cats=None, cat_name=None,
+                    start=0, n_components=3,  classes=None, classes_name=None,
                     dist_kws={}, scatter_kws={}):
 
         """
@@ -348,16 +425,11 @@ class PCA(object):
             Plot normalized scores.
         """
 
-        if norm:
-            scores = self.scores()
-        else:
-            scores = self.unnorm_scores()
-
-        scores_plot(scores,
+        scores_plot(self.scores(norm=norm),
                     start=start,
                     ncomps=n_components,
-                    cats=cats,
-                    cat_name=cat_name,
+                    cats=classes,
+                    cat_name=classes_name,
                     dist_kws=dist_kws,
                     scatter_kws=scatter_kws)
 
@@ -379,14 +451,11 @@ class PCA(object):
         ylabel: str
             Name of the variable.
         """
-        if norm:
-            scores = self.scores()
-        else:
-            scores = self.unnorm_scores()
-        scores = scores.iloc[:, comp]
 
-        corr = np.corrcoef(scores, y)[0, 1]
-        plt.scatter(scores, y)
+        s = self.scores(norm=norm).iloc[:, comp]
+
+        corr = np.corrcoef(s, y)[0, 1]
+        plt.scatter(s, y)
         plt.xlabel('comp {} scores'.format(comp))
         plt.ylabel(ylabel)
         plt.title('correlation: {:1.4f}'.format(corr))
@@ -396,10 +465,10 @@ class PCA(object):
         Computes the correlation between each PCA component and a continuous
         variable.
         """
-        return np.array([np.corrcoef(self.scores_[:, i], y)[0, 1]
+        return np.array([np.corrcoef(self.scores(norm=norm).iloc[:, i], y)[0, 1]
                          for i in range(self.n_components)])
 
-    def plot_interactive_scores_slice(self, comp1, comp2, norm=True, cats=None):
+    def plot_interactive_scores_slice(self, comp1, comp2, norm=True, classes=None):
         """
         Makes an interactive scatter plot of the scores from two components.
         The user can drag the mouse to select a set of observations then
@@ -415,52 +484,35 @@ class PCA(object):
 
         cats: {list, None}, shape (n_samples, )
             Categories to color points by.
-        """
-        if norm:
-            scores = self.scores()
-        else:
-            scores = self.unnorm_scores()
 
+
+        Example usage
+        -------------
+        import numpy as np
+        from jive.PCA import PCA
+
+        pca = PCA().fit(np.random.normal(size=(100, 20)))
+        model, saved_selected = pca.plot_interactive_scores_slice(0, 1)
+
+        # user selects some points using Lasso Select tool
+
+        model.to_df() the contains a pd.DataFrame listing the selected points
+        """
+        scores = self.scores(norm=norm)
         return interactive_slice(x=scores.iloc[:, comp1],
                                  y=scores.iloc[:, comp2],
-                                 cats=cats,
-                                 obs_names=self.obs_names_,
+                                 cats=classes,
+                                 obs_names=self.obs_names(),
                                  xlab='component {}'.format(comp1),
                                  ylab='component {}'.format(comp2))
 
-    # def interactive_scores_slice(self, comp1, comp2, cats=None):
-    #     """
-    #     model, saved_selected = pca.interactive_scores_slice(0, 1)
-    #     model.to_df()
-    #     """
-    #     output_notebook()
-
-    #     scores = self.scores
-
-    #     source, model = setup_data(x=scores.iloc[:, comp1],
-    #                                y=scores.iloc[:, comp2],
-    #                                names=self.obs_names_,
-    #                                classes=cats)
-
-    #     figkwds = dict(plot_width=800, plot_height=800,
-    #                    x_axis_label='component {}'.format(comp1),
-    #                    y_axis_label='component {}'.format(comp2),
-    #                    tools="pan,lasso_select,box_select,reset,help")
-
-    #     handle = get_handle(source, figkwds)
-    #     saved_selected = get_save_selected(handle, model)
-    #     return model, saved_selected
-
-
-# def safe_invert(x):
-#     if np.allclose(x, 0):
-#         return 0
-#     else:
-#         return 1.0/x
 
 def _arg_checker(X, n_components):
 
-    assert n_components is None or (n_components >= 1 and n_components <= min(X.shape))
+    if n_components is None:
+        n_components = min(X.shape)
+
+    assert n_components >= 1 and n_components <= min(X.shape)
 
     # extract data from X
     shape = X.shape
@@ -469,10 +521,54 @@ def _arg_checker(X, n_components):
         obs_names = np.array(X.index)
         var_names = np.array(X.columns)
     else:
-        obs_names = range(X.shape[0])
-        var_names = range(X.shape[1])
+        obs_names = None
+        var_names = None
 
-    return shape, obs_names, var_names
+    return shape, obs_names, var_names, n_components
+
+
+def _default_obs_names(n_samples):
+    return [i for i in range(n_samples)]
+
+
+def _default_var_names(n_features):
+    return ['feat_{}'.format(i) for i in range(n_features)]
+
+
+def _default_comp_names(n_components):
+    return ['comp_{}'.format(i) for i in range(n_components)]
+
+
+def svd2pd(U, D, V, obs_names=None, var_names=None, comp_names=None):
+    if obs_names is None:
+        obs_names = _default_obs_names(U.shape[0])
+
+    if var_names is None:
+        var_names = _default_var_names(V.shape[0])
+
+    if comp_names is None:
+        comp_names = _default_comp_names(U.shape[1])
+
+    U = pd.DataFrame(U, index=obs_names, columns=comp_names)
+    D = pd.Series(D, index=comp_names)
+    V = pd.DataFrame(V, index=var_names, columns=comp_names)
+
+    return U, D, V
+
+
+def _unnorm_scores(U, D):
+    _U = np.array(U)
+    if _U.ndim == 1:  # if U is a vector, then return as a vector
+        is_vec = True
+    else:
+        is_vec = False
+
+    if is_vec or _U.shape[1] == 1:
+        UD = _U.reshape(1, -1) * np.array(D)
+    else:
+        UD = _U * np.array(D)
+
+    return UD
 
 
 def pca_reconstruct(U, D, V, m):
@@ -495,20 +591,10 @@ def pca_reconstruct(U, D, V, m):
     m: the mean of the data (vector in R^d)
     """
 
-    U = np.array(U)
-    if U.ndim == 1:  # if U is a vector, then return as a vector
-        is_vec = True
-    else:
-        is_vec = False
-
-    if is_vec or U.shape[1] == 1:
-        UD = U.reshape(1, -1) * D
-    else:
-        UD = U * D
-
+    UD = _unnorm_scores(U, D)
     R = np.dot(UD, V) + m
 
-    if is_vec:
+    if np.array(U).ndim == 1:  # if U is a vector, then return as a vector
         return R.reshape(-1)
     else:
         return R
