@@ -84,7 +84,7 @@ Example
 
 
 
-For some more example code see `this notebook`_.
+For some more example code see `these example notebooks`_.
 
 Help and Support
 ================
@@ -119,7 +119,7 @@ A `Journal of Statistical Software`_ paper is coming soon.
 .. _Iain Carmichael: https://idc9.github.io/
 .. _Angle-Based Joint and Individual Variation Explained: https://arxiv.org/pdf/1704.02060.pdf
 .. _here: https://github.com/idc9/r_jive
-.. _this notebook: doc/AJIVE_demo.ipynb
+.. _these example notebooks: doc/example_notebooks/
 .. _`https://github.com/idc9/py\_jive`: https://github.com/idc9/r_jive
 .. _AJIVE paper: https://arxiv.org/pdf/1704.02060.pdf
 .. _nose: http://nose.readthedocs.io/en/latest/
