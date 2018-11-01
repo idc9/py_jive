@@ -23,6 +23,11 @@ def sample_randdir(num_obs, signal_ranks, R=1000, n_jobs=None):
         Number of jobs for parallel processing using
         sklearn.externals.joblib.Parallel. If None, will not use parallel
         processing.
+
+    Output
+    ------
+    random_sv_samples: np.array, shape (R, )
+        The samples.
     """
 
     if n_jobs is not None:
