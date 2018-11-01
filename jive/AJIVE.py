@@ -39,7 +39,7 @@ class AJIVE(object):
     wedin_percentile: int (default=95)
         Percentile for wedin bound cutoff for estimating joint rank.
 
-    wedin_n_samples: int (default=1000)
+    n_wedin_samples: int (default=1000)
         Number of wedin bound samples to draw.
 
     precomp_wedin_samples {None, dict of array-like, list of array-like}
@@ -49,7 +49,7 @@ class AJIVE(object):
         Percentile for random direction bound cutoff
         for estimating joint rank.
 
-    randdir_n_samples: int (default=1000)
+    n_randdir_samples: int (default=1000)
         Number of random directions samples to draw.
 
     precomp_randdir_samples {None,  array-like}
@@ -111,9 +111,9 @@ class AJIVE(object):
                  joint_rank=None, indiv_ranks=None,
                  center=True,
                  reconsider_joint_components=True,
-                 wedin_percentile=95, wedin_n_samples=1000,
+                 wedin_percentile=95, n_wedin_samples=1000,
                  precomp_wedin_samples=None,
-                 randdir_percentile=5, randdir_n_samples=1000,
+                 randdir_percentile=5, n_randdir_samples=1000,
                  precomp_randdir_samples=None,
                  store_full=True, n_jobs=None):
 
@@ -124,12 +124,16 @@ class AJIVE(object):
         self.center = center
 
         self.wedin_percentile = wedin_percentile
-        self.wedin_n_samples = wedin_n_samples
+        self.n_wedin_samples = n_wedin_samples
         self.wedin_samples_ = precomp_wedin_samples
+        if precomp_wedin_samples is not None:
+            self.n_wedin_samples = len(list(precomp_wedin_samples.values())[0])
 
         self.randdir_percentile = randdir_percentile
-        self.randdir_n_samples = randdir_n_samples
+        self.n_randdir_samples = n_randdir_samples
         self.random_sv_samples_ = precomp_randdir_samples
+        if precomp_randdir_samples is not None:
+            self.n_randdir_samples = len(n_randdir_samples)
 
         self.reconsider_joint_components = reconsider_joint_components
 
@@ -233,7 +237,7 @@ class AJIVE(object):
                 self.random_sv_samples_ = \
                     sample_randdir(num_obs,
                                    signal_ranks=list(self.init_signal_ranks.values()),
-                                   R=self.randdir_n_samples,
+                                   R=self.n_randdir_samples,
                                    n_jobs=self.n_jobs)
 
             # if the wedin samples are not already provided compute them
@@ -246,12 +250,12 @@ class AJIVE(object):
                                           D=init_signal_svd[bn]['svals'],
                                           V=init_signal_svd[bn]['loadings'],
                                           rank=self.init_signal_ranks[bn],
-                                          R=self.wedin_n_samples,
+                                          R=self.n_wedin_samples,
                                           n_jobs=self.n_jobs)
 
             self.wedin_sv_samples_ = len(blocks) - \
                 np.array([sum(self.wedin_samples_[bn][i] ** 2 for bn in block_names)
-                          for i in range(self.wedin_n_samples)])
+                          for i in range(self.n_wedin_samples)])
 
             # given the wedin and random bound samples, compute the joint rank
             # SV cutoff

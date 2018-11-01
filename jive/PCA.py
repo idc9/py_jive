@@ -18,7 +18,6 @@ from jive.viz.pca_scores_plot import scores_plot
 # TODOs
 # - finish documentation
 # - make documentation follow sklearn conventions more closely.
-# - add testing
 # - implement methods for automatic PCA rank selection
 # - interface with JackStraw
 class PCA(object):
@@ -271,24 +270,27 @@ class PCA(object):
 
     def get_UDV(self):
         """
+        Returns the Singular Value Decomposition of (possibly centered) X.
+
         Output
         ------
         U, D, V
 
         U: np.array (n_samples, n_components)
-            scores
+            scores (left singular values)
 
         D: np.array (n_components, )
             singular values
 
         V: np.array (n_features, n_components)
-            loadings matrix
+            loadings matrix (right singular values)
         """
         return self.scores_.values, self.svals_.values, self.loadings_.values
 
     def predict_scores(self, Y):
         """
-        Projects a new data matrix Y onto the loadings.
+        Projects a new data matrix Y onto the loadings and returns the
+        coordinates (scores) in the PCA subspace.
 
         Parameters
         ----------
@@ -299,28 +301,28 @@ class PCA(object):
             s -= np.dot(self.m_, self.loadings_)
         return s
 
-    def reconstruct_from_scores(self, scores):
-        return pca_reconstruct(u=scores, D=self.svals_, V=self.loadings_,
-                               m=self.m_)
-
-    def predict_reconstruction(self, y):
+    def predict_reconstruction(self, Y=None):
         """
+        Reconstructs the data in the original spaces (R^n_features). I.e projects
+        each data point onto the rank n_components PCA affine subspace
+        which sits in the original n_features dimensional space.
+
+
         Parameters
         ----------
-        y {int, array-like}:
-            If y is an int, reconstructs the y'th observation of the
-            training data. If y is vector, then computes the pca
-            reconstruction of y.
+        Y: None, array-like shape(n_new_samples, n_features)
+            Projects data onto PCA subspace which live in the original
+            space (R^n_features). If None, will use return the reconstruction
+            of the training ddata.
 
         """
-        if type(y) == int:
-            assert (0 <= y) and (y <= self.shape_[0])
-            u = self.scores_.values[y, :]
-
+        if Y is None:
+            scores = self.scores_.values
         else:
-            u = np.dot(self.loadings_, y)
+            scores = self.predict_scores()
 
-        return self.reconstruct_from_scores(scores=u)
+        return pca_reconstruct(U=scores, D=self.svals_, V=self.loadings_,
+                               m=self.m_)
 
     def plot_loading(self, comp, abs_sorted=True, show_var_names=True,
                      significant_vars=None, show_top=None, title=True):
@@ -517,6 +519,7 @@ def _arg_checker(X, n_components):
     # extract data from X
     shape = X.shape
 
+    # extract observation/variable names
     if type(X) == pd.DataFrame:
         obs_names = np.array(X.index)
         var_names = np.array(X.columns)
@@ -540,6 +543,9 @@ def _default_comp_names(n_components):
 
 
 def svd2pd(U, D, V, obs_names=None, var_names=None, comp_names=None):
+    """
+    Converts SVD output from numpy arrays to pandas.
+    """
     if obs_names is None:
         obs_names = _default_obs_names(U.shape[0])
 
@@ -557,6 +563,18 @@ def svd2pd(U, D, V, obs_names=None, var_names=None, comp_names=None):
 
 
 def _unnorm_scores(U, D):
+    """
+    Returns the unnormalized scores.
+
+    Parameters
+    ----------
+    U: array-like, shape (n_samples, n_components)
+        Normalized scores.
+
+    D: array-like, shape (n_components)
+        Singular values.
+
+    """
     _U = np.array(U)
     if _U.ndim == 1:  # if U is a vector, then return as a vector
         is_vec = True
@@ -571,7 +589,7 @@ def _unnorm_scores(U, D):
     return UD
 
 
-def pca_reconstruct(U, D, V, m):
+def pca_reconstruct(U, D, V, m=None):
     """
     Let the rank K pca of X be given by X ~= U D V^T. X in R^n x d
     where n = number of observations and d = number of variables.
@@ -592,7 +610,9 @@ def pca_reconstruct(U, D, V, m):
     """
 
     UD = _unnorm_scores(U, D)
-    R = np.dot(UD, V) + m
+    R = np.dot(UD, V.T)
+    if m is not None:
+        R += m
 
     if np.array(U).ndim == 1:  # if U is a vector, then return as a vector
         return R.reshape(-1)
