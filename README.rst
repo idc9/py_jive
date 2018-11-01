@@ -18,9 +18,9 @@ sets of features (e.g. clinical features and gene expression data).
 
 The primary algorithm in this package is Angle based Joint and
 Individual Variation Explained (AJIVE) which is a data integration/feature
-extraction algorithm. **AJIVE finds joint modes of variation which are
+extraction algorithm. AJIVE finds joint modes of variation which are
 common to all K data blocks as well as modes of *individual* variation which
-are specific to each block.** For a detailed discussion of AJIVE see
+are specific to each block. For a detailed discussion of AJIVE see
 `Angle-Based Joint and Individual Variation Explained`_. An R version of
 AJIVE can be found `here`_.
 
