@@ -83,9 +83,6 @@ Example
 .. image:: doc/figures/jive_diagnostic.png
 
 
-
-For some more example code see `these example notebooks`_.
-
 Help and Support
 ================
 

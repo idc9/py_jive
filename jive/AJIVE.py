@@ -168,12 +168,14 @@ class AJIVE(object):
 
         """
         blocks, self.init_signal_ranks, self.indiv_ranks, precomp_init_svd,\
-            self.center, obs_names, var_names = arg_checker(blocks,
-                                                            self.init_signal_ranks,
-                                                            self.joint_rank,
-                                                            self.indiv_ranks,
-                                                            precomp_init_svd,
-                                                            self.center)
+            self.center, obs_names, var_names, self.shapes_ = \
+                arg_checker(blocks,
+                            self.init_signal_ranks,
+                            self.joint_rank,
+                            self.indiv_ranks,
+                            precomp_init_svd,
+                            self.center)
+
         block_names = list(blocks.keys())
         num_obs = list(blocks.values())[0].shape[0]
 
@@ -526,6 +528,8 @@ def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks,
         else:
             blocks[bn] = np.array(blocks[bn])
 
+    shapes = {bn: blocks[bn].shape for bn in block_names}
+
     ####################
     # precomp_init_svd #
     ####################
@@ -584,7 +588,7 @@ def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks,
     center = _dict_formatting(center)
 
     return blocks, init_signal_ranks, indiv_ranks, precomp_init_svd, center,\
-        obs_names, var_names
+        obs_names, var_names, shapes
 
 
 def indiv_space_for_sparse(X, joint_scores, joint_rank, signal_rank, sv_threshold):
