@@ -58,7 +58,7 @@ class TestFig2Runs(unittest.TestCase):
         """
         self.ajive.plot_joint_diagnostic()
 
-    def test_common_estimates(self):
+    def test_common_SVD(self):
         """
         Check common SVD
         """
@@ -66,28 +66,52 @@ class TestFig2Runs(unittest.TestCase):
         rank = self.ajive.common.rank
         n = self.X.shape[0]
         d = sum(self.ajive.init_signal_ranks.values())
-        self.assertTrue(svd_checker(U, D, V, n, d, rank))
+        checks = svd_checker(U, D, V, n, d, rank)
+        self.assertTrue(all(checks.values()))
 
-    def test_block_specific_estimates(self):
+    def test_block_specific_SVDs(self):
+        """
+        Check each block specific SVD
+        """
         U, D, V = self.ajive.blocks['x'].joint.get_UDV()
         rank = 1
         n, d = self.X.shape
-        self.assertTrue(svd_checker(U, D, V, n, d, rank))
+        checks = svd_checker(U, D, V, n, d, rank)
+        self.assertTrue(all(checks.values()))
 
         U, D, V = self.ajive.blocks['x'].individual.get_UDV()
         rank = 1
         n, d = self.X.shape
-        self.assertTrue(svd_checker(U, D, V, n, d, rank))
+        checks = svd_checker(U, D, V, n, d, rank)
+        self.assertTrue(all(checks.values()))
 
         U, D, V = self.ajive.blocks['y'].joint.get_UDV()
         rank = 1
-        n, d = self.X.shape
-        self.assertTrue(svd_checker(U, D, V, n, d, rank))
+        n, d = self.Y.shape
+        checks = svd_checker(U, D, V, n, d, rank)
+        self.assertTrue(all(checks.values()))
 
         U, D, V = self.ajive.blocks['y'].individual.get_UDV()
         rank = 2
-        n, d = self.X.shape
-        self.assertTrue(svd_checker(U, D, V, n, d, rank))
+        n, d = self.Y.shape
+        checks = svd_checker(U, D, V, n, d, rank)
+        self.assertTrue(all(checks.values()))
+
+    def test_parallel_runs(self):
+        """
+        Check wedin/random samples works with parallel processing.
+        """
+        ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3}, n_jobs=-1)
+        ajive.fit(blocks={'x': self.X, 'y': self.Y})
+        self.assertTrue(hasattr(ajive, 'blocks'))
+
+    def test_list_input(self):
+        """
+        Check AJIVE can take a list input.
+        """
+        ajive = AJIVE(init_signal_ranks=[2, 3], n_jobs=-1)
+        ajive.fit(blocks=[self.X, self.Y])
+        self.assertTrue(set(ajive.block_names) == set([0, 1]))
 
 
 if __name__ == '__main__':

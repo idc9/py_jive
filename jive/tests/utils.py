@@ -2,27 +2,28 @@ import numpy as np
 
 
 def svd_checker(U, D, V, n, d, rank):
-    passes = True
+    checks = {}
 
-    if U.shape != (n, rank):
-        passes = False
+    # scores shape
+    checks['scores_shape'] = U.shape == (n, rank)
 
-    if D.shape != (rank, ):
-        passes = False
+    # scores have orthonormal columns
+    checks['scores_ortho'] = np.allclose(np.dot(U.T, U), np.eye(rank))
 
-    if V.shape != (d, rank):
-        passes = False
+    # singular values shape
+    checks['svals_shape'] = D.shape == (rank, )
 
-    if not np.allclose(np.dot(U.T, U), np.eye(rank)):
-        passes = False
-
-    if not np.allclose(np.dot(V.T, V), np.eye(rank)):
-        passes = False
-
-    # check singular values are non-increasing
+    # singular values are in non-increasing order
+    svals_nonincreasing = True
     for i in range(len(D) - 1):
-        if D[i] > D[i+1]:
-            passes = False
+        if D[i] < D[i+1]:
+            svals_nonincreasing = False
+    checks['svals_nonincreasing'] = svals_nonincreasing
 
-    return passes
+    # loadings shape
+    checks['loading_shape'] = V.shape == (d, rank)
 
+    # loadings have orthonormal columns
+    checks['loadings_ortho'] = np.allclose(np.dot(V.T, V), np.eye(rank))
+
+    return checks

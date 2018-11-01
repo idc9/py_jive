@@ -10,14 +10,27 @@ class TestPCA(unittest.TestCase):
 
     @classmethod
     def setUp(self):
-        self.n = 100
-        self.d = 20
-        self.n_components = 10
-        self.obs_names = ['sample_{}'.format(i) for i in range(self.n)]
-        self.var_names = ['var_{}'.format(i) for i in range(self.d)]
-        X = np.random.normal(size=(self.n, self.d))
-        self.X = pd.DataFrame(X, index=self.obs_names, columns=self.var_names)
-        self.pca = PCA(n_components=self.n_components).fit(self.X)
+        n = 100
+        d = 20
+        n_components = 10
+        obs_names = ['sample_{}'.format(i) for i in range(n)]
+        var_names = ['var_{}'.format(i) for i in range(d)]
+
+        X = pd.DataFrame(np.random.normal(size=(n, d)),
+                         index=obs_names, columns=var_names)
+        X_cent = X - X.mean(axis=0)
+
+        pca = PCA(n_components=n_components).fit(X)
+
+        # store these for testing
+        self.n = n
+        self.d = d
+        self.n_components = n_components
+        self.obs_names = obs_names
+        self.var_names = var_names
+        self.X = X
+        self.X_cent = X_cent
+        self.pca = pca
 
     def test_has_attributes(self):
         """
@@ -47,13 +60,28 @@ class TestPCA(unittest.TestCase):
         self.assertEqual(self.pca.svals_.shape, (self.n_components, ))
         self.assertEqual(self.pca.svals().shape, (self.n_components, ))
 
-    def test_pca_formatting(self):
+    def test_SVD(self):
+        """
+        Check the SVD decomposition is correct.
+        """
         U, D, V = self.pca.get_UDV()
         n, d = self.X.shape
         rank = self.n_components
-        self.assertTrue(svd_checker(U, D, V, n, d, rank))
+        checks = svd_checker(U, D, V, n, d, rank)
+        self.assertTrue(all(checks.values()))
+
+    def test_reconstruction(self):
+        """
+        We can reconstruct the original data matrix exactly from the full
+        reconstruction.
+        """
+        pca = PCA().fit(self.X)
+        self.assertTrue(np.allclose(self.X, pca.predict_reconstruction()))
 
     def test_plots(self):
+        """
+        Check all plotting functions run without error
+        """
         self.pca.plot_loading(comp=0)
         self.pca.plot_scores_hist(comp=1)
         self.pca.plot_scree()
@@ -68,9 +96,10 @@ class TestPCA(unittest.TestCase):
         Check Frobenius norm is calculated correctly whether the full
         or partial PCA is computed.
         """
-        true_frob_norm = np.linalg.norm(self.X, ord='fro')
+        true_frob_norm = np.linalg.norm(self.X_cent, ord='fro')
         pca = PCA(n_components=None).fit(self.X)
         self.assertTrue(np.allclose(pca.frob_norm_, true_frob_norm))
 
+        # TODO: this is failing, it could be a numerical issue.
         pca = PCA(n_components=3).fit(self.X)
         self.assertTrue(np.allclose(pca.frob_norm_, true_frob_norm))
