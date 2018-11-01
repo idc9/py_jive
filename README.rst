@@ -40,6 +40,8 @@ Or clone the repo:
     git clone https://github.com/idc9/py_jive.git
     python setup.py install
 
+jive is currently available for python 3
+
 Example
 =======
 
