@@ -133,7 +133,7 @@ class AJIVE(object):
         self.n_randdir_samples = n_randdir_samples
         self.random_sv_samples_ = precomp_randdir_samples
         if precomp_randdir_samples is not None:
-            self.n_randdir_samples = len(n_randdir_samples)
+            self.n_randdir_samples = len(precomp_randdir_samples)
 
         self.reconsider_joint_components = reconsider_joint_components
 
