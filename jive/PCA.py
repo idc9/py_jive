@@ -129,7 +129,7 @@ class PCA(object):
         x.shape_ = shape
 
         if type(scores) != pd.DataFrame:
-            if var_names is None:
+            if obs_names is None:
                 obs_names = _default_obs_names(scores.shape[0])
             if comp_names is None:
                 comp_names = _default_comp_names(scores.shape[1])

@@ -1,6 +1,8 @@
 import unittest
 
 import numpy as np
+import pandas as pd
+
 from jive.AJIVE import AJIVE
 from jive.ajive_fig2 import generate_data_ajive_fig2
 from jive.tests.utils import svd_checker
@@ -11,11 +13,22 @@ class TestFig2Runs(unittest.TestCase):
     @classmethod
     def setUp(self):
         X, Y = generate_data_ajive_fig2()
+
+        obs_names = ['sample_{}'.format(i) for i in range(X.shape[0])]
+        var_names = {'x': ['x_var_{}'.format(i) for i in range(X.shape[1])],
+                     'y': ['y_var_{}'.format(i) for i in range(Y.shape[1])]}
+
+        X = pd.DataFrame(X, index=obs_names, columns=var_names['x'])
+        Y = pd.DataFrame(Y, index=obs_names, columns=var_names['y'])
+
         ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3})
         ajive.fit(blocks={'x': X, 'y': Y})
+
         self.ajive = ajive
         self.X = X
         self.Y = Y
+        self.obs_names = obs_names
+        self.var_names = var_names
 
     def test_has_attributes(self):
         """
@@ -96,6 +109,27 @@ class TestFig2Runs(unittest.TestCase):
         n, d = self.Y.shape
         checks = svd_checker(U, D, V, n, d, rank)
         self.assertTrue(all(checks.values()))
+
+    def test_names(self):
+        self.assertEqual(set(self.ajive.common.obs_names()),
+                         set(self.obs_names))
+        self.assertEqual(set(self.ajive.common.scores_.index),
+                         set(self.obs_names))
+
+        self.assertEqual(set(self.ajive.blocks['x'].joint.obs_names()),
+                         set(self.obs_names))
+
+        self.assertEqual(set(self.ajive.blocks['x'].joint.scores_.index),
+                         set(self.obs_names))
+
+        self.assertEqual(set(self.ajive.blocks['x'].joint.var_names()),
+                         set(self.var_names['x']))
+
+        self.assertEqual(set(self.ajive.blocks['x'].individual.obs_names()),
+                         set(self.obs_names))
+
+        self.assertEqual(set(self.ajive.blocks['x'].individual.var_names()),
+                         set(self.var_names['x']))
 
     def test_parallel_runs(self):
         """
