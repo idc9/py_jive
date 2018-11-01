@@ -84,6 +84,27 @@ def fix_scipy_svds(scipy_svds):
 
 
 def centering(X, method='mean'):
+    """
+    Mean centers columns of a matrix.
+
+    Parameters
+    ----------
+    X: array-like, shape (n_samples, n_features)
+        The input matrix.
+
+    method: str, None
+        How to center.
+
+    Output
+    ------
+    X_centered, center
+
+    X_centered: array-like, shape (n_samples, n_features)
+        The centered version of X whose columns have mean zero.
+
+    center: array-like, shape (n_features, )
+        The column means of X.
+    """
 
     if method == 'mean':
         center = np.array(X.mean(axis=0)).reshape(-1)
