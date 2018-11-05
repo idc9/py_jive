@@ -1,5 +1,14 @@
 # Updates
 
+## 11/01/18 (version 0.1.2)
+
+- bug fix: observation names incorrectly extracted when using np.arrays as input
+- speed up: only calculate top singular value for random direction bound
+
+## 11/01/18 (version 0.1.1)
+
+- bug fix: AJIVE.common and PCA.from_precomputed now correctly extract observation names
+
 
 ## 10/29/18 (version 0.1.0)
 Major changes to both frontend and backend
