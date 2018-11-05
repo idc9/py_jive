@@ -514,7 +514,7 @@ def arg_checker(blocks, init_signal_ranks, joint_rank, indiv_ranks,
     assert len(set(blocks[bn].shape[0] for bn in block_names)) == 1
 
     # get obs and variable names
-    obs_names = list(range(list(blocks.values())[0].shape[1]))
+    obs_names = list(range(list(blocks.values())[0].shape[0]))
     var_names = {}
     for bn in block_names:
         if type(blocks[bn]) == pd.DataFrame:
