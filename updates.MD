@@ -1,6 +1,6 @@
 # Updates
 
-## 11/01/18 (version 0.1.2)
+## 11/05/18 (version 0.1.2)
 
 - bug fix: observation names incorrectly extracted when using np.arrays as input
 - speed up: only calculate top singular value for random direction bound
