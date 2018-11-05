@@ -52,6 +52,6 @@ def _get_sample(num_obs, signal_ranks):
 
     # compute largest sing val of random joint matrix
     M = np.bmat(M)
-    _, svs, __ = svd_wrapper(M)
+    _, svs, __ = svd_wrapper(M, rank=1)
 
     return max(svs) ** 2
