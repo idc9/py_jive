@@ -728,7 +728,9 @@ class BlockSpecificResults():
                                           obs_names=obs_names,
                                           var_names=var_names,
                                           m=m)
-        self.joint.full_ = joint['full']
+        self.joint.full_ = pd.DataFrame(joint['full'],
+                                        index=obs_names, columns=var_names)
+
         self.joint.set_comp_names(['joint_comp_{}'.format(i)
                                    for i in range(self.joint.rank)])
 
@@ -739,11 +741,15 @@ class BlockSpecificResults():
                                                obs_names=obs_names,
                                                var_names=var_names,
                                                m=m)
-        self.individual.full_ = individual['full']
+
+        self.individual.full_ = pd.DataFrame(individual['full'],
+                                             index=obs_names, columns=var_names)
+
         self.individual.set_comp_names(['indiv_comp_{}'.format(i)
                                         for i in range(self.individual.rank)])
 
-        self.noise_ = noise
+        self.noise_ = pd.DataFrame(noise,
+                                   index=obs_names, columns=var_names)
 
         self.block_name = block_name
 
