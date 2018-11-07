@@ -402,18 +402,18 @@ class AJIVE(object):
         else:
             return None
 
-    def plot_joint_diagnostic(self):
+    def plot_joint_diagnostic(self, fontsize=20):
         """
         Plots joint rank threshold diagnostic plot
         """
-        if not self.is_fit:
-            raise ValueError('Decomposition has not yet been computed')
 
         plot_joint_diagnostic(joint_svals=self.all_joint_svals_,
                               wedin_sv_samples=self.wedin_sv_samples_,
+                              min_signal_rank=min(self.init_signal_ranks.values()),
                               random_sv_samples=self.random_sv_samples_,
                               wedin_percentile=self.wedin_percentile,
-                              random_percentile=self.randdir_percentile)
+                              random_percentile=self.randdir_percentile,
+                              fontsize=fontsize)
 
     def save(self, fpath, compress=9):
         dump(self, fpath, compress=compress)

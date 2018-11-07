@@ -1,61 +1,69 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from statsmodels.distributions.empirical_distribution import ECDF
-
 
 def plot_joint_diagnostic(joint_svals,
                           wedin_sv_samples,
                           random_sv_samples,
-                          wedin_percentile=5,
-                          random_percentile=95):
+                          min_signal_rank,
+                          wedin_percentile=95,
+                          random_percentile=5,
+                          fontsize=20):
+
+    fontsize_large = fontsize
+    fontsize_small = int(fontsize_large * .75)
 
     # compute sv_threshold
     wedin_cutoff = np.percentile(wedin_sv_samples, wedin_percentile)
     rand_cutoff = np.percentile(random_sv_samples, random_percentile)
     svsq_cutoff = max(rand_cutoff, wedin_cutoff)
-    if rand_cutoff > wedin_cutoff:
-        rand_lw = 3
-        wedin_lw = 1
-    else:
-        rand_lw = 1
-        wedin_lw = 3
-
     joint_rank_est = sum(joint_svals ** 2 > svsq_cutoff)
 
-    # plot wedin CDF
-    wedin_xvals, wedin_cdf = get_cdf_vals(wedin_sv_samples)
+    wedin_low = np.percentile(wedin_sv_samples, 100 - wedin_percentile)
+    wedin_high = np.percentile(wedin_sv_samples, wedin_percentile)
 
-    plt.plot(wedin_xvals,
-             wedin_cdf,
-             color='blue',
-             ls='dotted',
-             label='wedin cdf')
+    rand_low = np.percentile(random_sv_samples, random_percentile)
+    rand_high = np.percentile(random_sv_samples, 100 - random_percentile)
 
+    if rand_cutoff > wedin_cutoff:
+        rand_lw = 4
+        wedin_lw = 2
+
+        # rand_label = r'\textbf{random %dth percentile}' % random_percentile
+        rand_label = 'random %dth percentile (active)' % random_percentile
+        wedin_label = 'wedin %dth percentile' % wedin_percentile
+
+    else:
+        rand_lw = 2
+        wedin_lw = 4
+
+        rand_label = 'random %dth percentile' % random_percentile
+        wedin_label = 'wedin %dth percentil (active)}' % wedin_percentile
+        # wedin_label = r'\textbf{wedin %dth percentile}' % wedin_percentile
+
+    # rc('text', usetex=True)
+
+    # wedin cutoff
+    plt.axvspan(wedin_low, wedin_high, alpha=0.1, color='blue')
     plt.axvline(wedin_cutoff,
                 color='blue',
                 ls='dashed',
                 lw=wedin_lw,
-                label='wedin %dth percentile' % wedin_percentile)
+                label=wedin_label)
 
-    # plot random CDF
-    rand_xvals, rand_cdf = get_cdf_vals(random_sv_samples)
-    plt.plot(rand_xvals,
-             1 - rand_cdf,
-             color='red',
-             ls='dotted',
-             label='random survival')
-
+    # random cutoff
+    plt.axvspan(rand_low, rand_high, alpha=0.1, color='red')
     plt.axvline(rand_cutoff,
                 color='red',
                 ls='dashed',
                 lw=rand_lw,
-                label='random %dth percentile' % random_percentile)
+                label=rand_label)
 
     # plot joint singular values
     first_joint = True
     first_nonjoint = True
-    for sv in joint_svals:
+    svals = joint_svals[0:min_signal_rank]
+    for i, sv in enumerate(svals):
         sv_sq = sv**2
 
         if sv_sq > svsq_cutoff:
@@ -63,29 +71,37 @@ def plot_joint_diagnostic(joint_svals,
             label = 'joint singular value' if first_joint else ''
             first_joint = False
 
-            plt.axvline(sv_sq,
-                        color='black',
-                        label=label,
-                        lw=3)
+            color = 'black'
         else:
 
             label = 'nonjoint singular value' if first_nonjoint else ''
             first_nonjoint = False
-            plt.axvline(sv_sq,
-                        color='grey',
-                        label=label,
-                        lw=1)
 
-    plt.xlabel('squared singular value')
-    plt.legend()
+            color = 'grey'
+
+        plt.axvline(sv_sq, ymin=.05, ymax=.95,
+                    color=color,
+                    label=label,
+                    lw=2, zorder=2)
+
+        spread = .05 * (max(svals) - min(svals))
+        plt.hlines(y=1 - (.25 + .25 * i/min_signal_rank),
+                   xmin=sv_sq - spread, xmax=sv_sq + spread,
+                   color=color)
+
+    plt.xlabel('squared singular value', fontsize=fontsize_large)
+    plt.legend(fontsize=fontsize_small)
     plt.ylim([0, 1])
-    plt.xlim(xmin=0)
-    plt.title('joint singular value thresholding (joint rank estimate = %d)' % joint_rank_est)
+    plt.xlim(xmin=1)
+    plt.title('joint singular value thresholding'
+              ' (joint rank estimate = {:d})'.format(joint_rank_est),
+              fontsize=fontsize_large)
 
-
-def get_cdf_vals(samples):
-    ecdf = ECDF(samples)
-    xvals = np.linspace(start=min(samples), stop=max(samples), num=100)
-    cdf_vals = np.array([ecdf(x) for x in xvals])
-
-    return xvals, cdf_vals
+    # format axes
+    ax = plt.gca()
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.axes.get_yaxis().set_ticks([])
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(fontsize_small)

@@ -83,7 +83,7 @@ def plot_loading(v, abs_sorted=True, show_var_names=True,
     # plt.figure(figsize=[5, 10])
     plt.scatter(v, inds, color=colors)
     plt.axvline(x=0, alpha=.5, color='black')
-    plt.xlabel('loading value')
+    plt.xlabel('value')
     if show_var_names:
         plt.yticks(inds, v.index)
 
