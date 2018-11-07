@@ -29,19 +29,14 @@ def plot_joint_diagnostic(joint_svals,
         rand_lw = 4
         wedin_lw = 2
 
-        # rand_label = r'\textbf{random %dth percentile}' % random_percentile
-        rand_label = 'random %dth percentile (active)' % random_percentile
-        wedin_label = 'wedin %dth percentile' % wedin_percentile
-
     else:
         rand_lw = 2
         wedin_lw = 4
 
-        rand_label = 'random %dth percentile' % random_percentile
-        wedin_label = 'wedin %dth percentil (active)}' % wedin_percentile
-        # wedin_label = r'\textbf{wedin %dth percentile}' % wedin_percentile
-
-    # rc('text', usetex=True)
+    rand_label = 'random {:d}th percentile ({:1.3f})'.format(random_percentile,
+                                                             rand_cutoff)
+    wedin_label = 'wedin {:d}th percentile ({:1.3f})'.format(wedin_percentile,
+                                                             wedin_cutoff)
 
     # wedin cutoff
     plt.axvspan(wedin_low, wedin_high, alpha=0.1, color='blue')
