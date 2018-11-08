@@ -1,5 +1,10 @@
 # Updates
 
+## 11/08/18 (version 0.1.3)
+
+- new diagnostic plots
+- fixed some visualization bugs
+
 ## 11/05/18 (version 0.1.2)
 
 - bug fix: observation names incorrectly extracted when using np.arrays as input
