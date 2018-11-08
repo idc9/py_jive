@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def scores_plot(values, start=0, ncomps=3,
-                cats=None, cat_name=None,
+                classes=None, class_name=None,
                 dist_kws={}, scatter_kws={}):
     """
 
@@ -18,15 +18,20 @@ def scores_plot(values, start=0, ncomps=3,
     else:
         values_ = pd.DataFrame(np.array(values)[:, start:(start + ncomps)])
 
-    if cats is not None:
-        assert len(cats) == values_.shape[0]
-        if cat_name is None:
-            cat_name = 'cat'
-        values_[cat_name] = np.array(cats)
-    else:
-        cat_name = None
+    if classes is not None:
+        assert len(classes) == values_.shape[0]
+        if hasattr(classes, 'name'):
+            class_name = classes.name
+        elif class_name is None:
+            class_name = 'classes'
 
-    g = sns.PairGrid(values_, hue=cat_name)
+        values_[class_name] = np.array(classes)
+        values_[class_name] = values_[class_name].astype(str)
+    else:
+        class_name = None
+
+    g = sns.PairGrid(values_, hue=class_name,
+                     vars=list(values_.columns.difference([class_name])))  # Hack
     g = g.map_upper(plt.scatter, **scatter_kws)
     g = g.map_diag(sns.distplot, rug=True, **dist_kws)
 
@@ -34,7 +39,7 @@ def scores_plot(values, start=0, ncomps=3,
     for i, j in zip(*np.triu_indices_from(g.axes, 1)):
         g.axes[j, i].set_visible(False)
 
-    if cats is not None:
+    if classes is not None:
         g.add_legend()
 
     # label axes properly

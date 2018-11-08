@@ -415,7 +415,7 @@ class PCA(object):
         plot_var_expl_cum(self.var_expl_cum_)
 
     def plot_scores(self, norm=True,
-                    start=0, n_components=3,  classes=None, classes_name=None,
+                    start=0, n_components=3,  classes=None, class_name=None,
                     dist_kws={}, scatter_kws={}):
 
         """
@@ -430,8 +430,8 @@ class PCA(object):
         scores_plot(self.scores(norm=norm),
                     start=start,
                     ncomps=n_components,
-                    cats=classes,
-                    cat_name=classes_name,
+                    classes=classes,
+                    class_name=class_name,
                     dist_kws=dist_kws,
                     scatter_kws=scatter_kws)
 
