@@ -11,7 +11,7 @@ Overview
 ========
 
 **jive** is a data analysis package for high-dimensional, multi-block
-(or multi-view) data. The multi-block data setting mean two or more data
+(or multi-view) data. The multi-block data setting means two or more data
 matrices with a fixed set of observations (e.g. patients) and multiple
 sets of features (e.g. clinical features and gene expression data).
 
