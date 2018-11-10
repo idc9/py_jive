@@ -159,13 +159,20 @@ class TestFig2Runs(unittest.TestCase):
         self.assertTrue(ajive.blocks[1].joint.full_ is None)
         self.assertTrue(ajive.blocks[1].individual.full_ is None)
 
-    def test_joint_rank0(self):
+    def test_rank0(self):
         """
-        Check setting joint rank to zero works
+        Check setting joint/individual rank to zero works
         """
         ajive = AJIVE(init_signal_ranks=[2, 3], joint_rank=0)
         ajive.fit(blocks=[self.X, self.Y])
         self.assertTrue(ajive.common.rank == 0)
+        self.assertTrue(ajive.blocks[0].joint.rank == 0)
+        self.assertTrue(ajive.blocks[0].joint.scores_ is None)
+
+        ajive = AJIVE(init_signal_ranks=[2, 3], indiv_ranks=[0, 1])
+        ajive.fit(blocks=[self.X, self.Y])
+        self.assertTrue(ajive.blocks[0].individual.rank == 0)
+        self.assertTrue(ajive.blocks[0].individual.scores_ is None)
 
 
 if __name__ == '__main__':
