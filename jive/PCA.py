@@ -110,7 +110,8 @@ class PCA(object):
     def from_precomputed(cls, n_components=None, center=None,
                          scores=None, loadings=None, svals=None,
                          obs_names=None, var_names=None, comp_names=None,
-                         m=None, frob_norm=None, var_expl_prop=None):
+                         m=None, frob_norm=None, var_expl_prop=None,
+                         shape=None):
 
         """
         Loads the PCA object from a precomputed PCA decomposition.
@@ -121,14 +122,17 @@ class PCA(object):
             n_components = scores.shape[1]
         x.n_components = n_components
 
-        shape = [None, None]
-        if scores is not None:
-            shape[0] = scores.shape[0]
-        if loadings is not None:
-            shape[1] = loadings.shape[0]
+        if shape is not None:
+            shape = shape
+        else:
+            shape = [None, None]
+            if scores is not None:
+                shape[0] = scores.shape[0]
+            if loadings is not None:
+                shape[1] = loadings.shape[0]
         x.shape_ = shape
 
-        if type(scores) != pd.DataFrame:
+        if scores is not None and type(scores) != pd.DataFrame:
             if obs_names is None:
                 obs_names = _default_obs_names(scores.shape[0])
             if comp_names is None:
@@ -136,12 +140,12 @@ class PCA(object):
             scores = pd.DataFrame(scores, index=obs_names,
                                   columns=comp_names)
 
-        if type(svals) != pd.Series:
+        if svals is not None and type(svals) != pd.Series:
             if comp_names is None:
                 comp_names = _default_comp_names(loadings.shape[1])
             svals = pd.Series(svals, index=comp_names)
 
-        if type(loadings) != pd.DataFrame:
+        if loadings is not None and type(loadings) != pd.DataFrame:
             if var_names is None:
                 var_names = _default_var_names(loadings.shape[0])
             if comp_names is None:

@@ -402,7 +402,8 @@ class AJIVE(object):
                                                    block_name=bn,
                                                    obs_names=obs_names,
                                                    var_names=var_names[bn],
-                                                   m=self.centers_[bn])
+                                                   m=self.centers_[bn],
+                                                   shape=blocks[bn].shape)
 
         return self
 
@@ -688,15 +689,6 @@ def reconsider_joint_components(blocks, sv_threshold,
     return joint_scores, joint_svals, joint_loadings, joint_rank
 
 
-class EmptyPCA(object):
-    def __init__(self, obs_names=None, var_names=None, m=None):
-        self.obs_names = obs_names
-        self.var_names = var_names
-        self.m_ = m
-        self.n_components = 0
-        self.rank = 0
-
-
 class BlockSpecificResults(object):
     """
     Contains the block specific results.
@@ -747,22 +739,19 @@ class BlockSpecificResults(object):
     """
     def __init__(self, joint, individual, noise,
                  obs_names=None, var_names=None, block_name=None,
-                 m=None):
+                 m=None, shape=None):
 
-        if joint['rank'] == 0:
-            self.joint = EmptyPCA(obs_names=obs_names, var_names=var_names, m=m)
+        self.joint = PCA.from_precomputed(n_components=joint['rank'],
+                                          scores=joint['scores'],
+                                          loadings=joint['loadings'],
+                                          svals=joint['svals'],
+                                          obs_names=obs_names,
+                                          var_names=var_names,
+                                          m=m, shape=shape)
 
-        else:
-            self.joint = PCA.from_precomputed(n_components=joint['rank'],
-                                              scores=joint['scores'],
-                                              loadings=joint['loadings'],
-                                              svals=joint['svals'],
-                                              obs_names=obs_names,
-                                              var_names=var_names,
-                                              m=m)
-
+        if joint['rank'] != 0:
             self.joint.set_comp_names(['joint_comp_{}'.format(i)
-                                      for i in range(self.joint.rank)])
+                                       for i in range(self.joint.rank)])
 
         if joint['full'] is not None:
             self.joint.full_ = pd.DataFrame(joint['full'],
@@ -770,16 +759,14 @@ class BlockSpecificResults(object):
         else:
             self.joint.full_ = None
 
-        if individual['rank'] == 0:
-            self.individual = EmptyPCA(obs_names=obs_names, var_names=var_names, m=m)
-        else:
-            self.individual = PCA.from_precomputed(n_components=individual['rank'],
-                                                   scores=individual['scores'],
-                                                   loadings=individual['loadings'],
-                                                   svals=individual['svals'],
-                                                   obs_names=obs_names,
-                                                   var_names=var_names,
-                                                   m=m)
+        self.individual = PCA.from_precomputed(n_components=individual['rank'],
+                                               scores=individual['scores'],
+                                               loadings=individual['loadings'],
+                                               svals=individual['svals'],
+                                               obs_names=obs_names,
+                                               var_names=var_names,
+                                               m=m, shape=shape)
+        if individual['rank'] != 0:
             self.individual.set_comp_names(['indiv_comp_{}'.format(i)
                                             for i in range(self.individual.rank)])
 
