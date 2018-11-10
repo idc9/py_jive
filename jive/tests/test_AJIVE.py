@@ -143,9 +143,21 @@ class TestFig2Runs(unittest.TestCase):
         """
         Check AJIVE can take a list input.
         """
-        ajive = AJIVE(init_signal_ranks=[2, 3], n_jobs=-1)
+        ajive = AJIVE(init_signal_ranks=[2, 3])
         ajive.fit(blocks=[self.X, self.Y])
         self.assertTrue(set(ajive.block_names) == set([0, 1]))
+
+    def test_dont_store_full(self):
+        """
+        Make sure setting store_full = False works
+        """
+        ajive = AJIVE(init_signal_ranks=[2, 3], store_full=False)
+        ajive.fit(blocks=[self.X, self.Y])
+
+        self.assertTrue(ajive.blocks[0].joint.full_ is None)
+        self.assertTrue(ajive.blocks[0].individual.full_ is None)
+        self.assertTrue(ajive.blocks[1].joint.full_ is None)
+        self.assertTrue(ajive.blocks[1].individual.full_ is None)
 
 
 if __name__ == '__main__':

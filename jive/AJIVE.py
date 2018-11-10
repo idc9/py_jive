@@ -303,13 +303,13 @@ class AJIVE(object):
             if issparse(X):  # lazy evaluation for sparse matrices
                 J = col_proj(X, joint_scores)
                 U, D, V = svd_wrapper(J, self.joint_rank)
-                J = np.array([])  # kill J matrix to save memory
+                J = None  # kill J matrix to save memory
 
             else:
                 J = np.array(np.dot(joint_scores, np.dot(joint_scores.T, X)))
                 U, D, V = svd_wrapper(J, self.joint_rank)
                 if not self.store_full:
-                    J = np.array([])  # kill J matrix to save memory
+                    J = None # kill J matrix to save memory
 
             block_specific[bn]['joint'] = {'full': J,
                                            'scores': U,
@@ -329,7 +329,7 @@ class AJIVE(object):
                                                              self.joint_rank,
                                                              self.init_signal_ranks[bn],
                                                              self.sv_threshold_[bn])
-                I = np.array([])
+                I = None
 
             else:
 
@@ -357,7 +357,7 @@ class AJIVE(object):
                 if self.store_full:
                     I = np.array(np.dot(U, np.dot(np.diag(D), V.T)))
                 else:
-                    I = np.array([])  # Kill I matrix to save memory
+                    I = None  # Kill I matrix to save memory
 
             block_specific[bn]['individual'] = {'full': I,
                                                 'scores': U,
@@ -372,7 +372,7 @@ class AJIVE(object):
             if self.store_full and not issparse(X):
                 E = X - (J + I)
             else:
-                E = np.array([])
+                E = None
             block_specific[bn]['noise'] = E
 
         # save block specific estimates
@@ -728,8 +728,12 @@ class BlockSpecificResults():
                                           obs_names=obs_names,
                                           var_names=var_names,
                                           m=m)
-        self.joint.full_ = pd.DataFrame(joint['full'],
-                                        index=obs_names, columns=var_names)
+
+        if joint['full'] is not None:
+            self.joint.full_ = pd.DataFrame(joint['full'],
+                                            index=obs_names, columns=var_names)
+        else:
+            self.joint.full_ = None
 
         self.joint.set_comp_names(['joint_comp_{}'.format(i)
                                    for i in range(self.joint.rank)])
@@ -742,14 +746,20 @@ class BlockSpecificResults():
                                                var_names=var_names,
                                                m=m)
 
-        self.individual.full_ = pd.DataFrame(individual['full'],
-                                             index=obs_names, columns=var_names)
+        if individual['full'] is not None:
+            self.individual.full_ = pd.DataFrame(individual['full'],
+                                                 index=obs_names, columns=var_names)
+        else:
+            self.individual.full_ = None
 
         self.individual.set_comp_names(['indiv_comp_{}'.format(i)
                                         for i in range(self.individual.rank)])
 
-        self.noise_ = pd.DataFrame(noise,
-                                   index=obs_names, columns=var_names)
+        if noise is not None:
+            self.noise_ = pd.DataFrame(noise,
+                                       index=obs_names, columns=var_names)
+        else:
+            self.noise_ = None
 
         self.block_name = block_name
 
