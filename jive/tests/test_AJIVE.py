@@ -159,6 +159,14 @@ class TestFig2Runs(unittest.TestCase):
         self.assertTrue(ajive.blocks[1].joint.full_ is None)
         self.assertTrue(ajive.blocks[1].individual.full_ is None)
 
+    def test_joint_rank0(self):
+        """
+        Check setting joint rank to zero works
+        """
+        ajive = AJIVE(init_signal_ranks=[2, 3], joint_rank=0)
+        ajive.fit(blocks=[self.X, self.Y])
+        self.assertTrue(ajive.common.rank == 0)
+
 
 if __name__ == '__main__':
     unittest.main()

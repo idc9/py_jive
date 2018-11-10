@@ -299,17 +299,24 @@ class AJIVE(object):
             # step 3.1: block specific joint space #
             ########################################
             # project X onto the joint space then compute SVD
+            if self.joint_rank != 0:
+                if issparse(X):  # lazy evaluation for sparse matrices
+                    J = col_proj(X, joint_scores)
+                    U, D, V = svd_wrapper(J, self.joint_rank)
+                    J = None  # kill J matrix to save memory
 
-            if issparse(X):  # lazy evaluation for sparse matrices
-                J = col_proj(X, joint_scores)
-                U, D, V = svd_wrapper(J, self.joint_rank)
-                J = None  # kill J matrix to save memory
+                else:
+                    J = np.array(np.dot(joint_scores, np.dot(joint_scores.T, X)))
+                    U, D, V = svd_wrapper(J, self.joint_rank)
+                    if not self.store_full:
+                        J = None  # kill J matrix to save memory
 
             else:
-                J = np.array(np.dot(joint_scores, np.dot(joint_scores.T, X)))
-                U, D, V = svd_wrapper(J, self.joint_rank)
-                if not self.store_full:
-                    J = None # kill J matrix to save memory
+                U, D, V = None, None, None
+                if self.store_full:
+                    J = np.zeros(shape=blocks[bn].shape)
+                else:
+                    J = None
 
             block_specific[bn]['joint'] = {'full': J,
                                            'scores': U,
@@ -345,17 +352,28 @@ class AJIVE(object):
                     max_rank = min(X.shape) - self.joint_rank  # saves computation
                     U, D, V = svd_wrapper(X_orthog, max_rank)
                     rank = sum(D > self.sv_threshold_[bn])
-                    U = U[:, 0:rank]
-                    D = D[0:rank]
-                    V = V[:, 0:rank]
+
+                    if rank == 0:
+                        U, D, V = None
+                    else:
+                        U = U[:, 0:rank]
+                        D = D[0:rank]
+                        V = V[:, 0:rank]
+
                     self.indiv_ranks[bn] = rank
 
                 else:  # indiv_rank has been provided by the user
                     rank = self.indiv_ranks[bn]
-                    U, D, V = svd_wrapper(X_orthog, rank)
+                    if rank == 0:
+                        U, D, V = None, None, None
+                    else:
+                        U, D, V = svd_wrapper(X_orthog, rank)
 
                 if self.store_full:
-                    I = np.array(np.dot(U, np.dot(np.diag(D), V.T)))
+                    if rank == 0:
+                        I = np.zeros(shape=blocks[bn].shape)
+                    else:
+                        I = np.array(np.dot(U, np.dot(np.diag(D), V.T)))
                 else:
                     I = None  # Kill I matrix to save memory
 
@@ -670,7 +688,16 @@ def reconsider_joint_components(blocks, sv_threshold,
     return joint_scores, joint_svals, joint_loadings, joint_rank
 
 
-class BlockSpecificResults():
+class EmptyPCA(object):
+    def __init__(self, obs_names=None, var_names=None, m=None):
+        self.obs_names = obs_names
+        self.var_names = var_names
+        self.m_ = m
+        self.n_components = 0
+        self.rank = 0
+
+
+class BlockSpecificResults(object):
     """
     Contains the block specific results.
 
@@ -721,13 +748,21 @@ class BlockSpecificResults():
     def __init__(self, joint, individual, noise,
                  obs_names=None, var_names=None, block_name=None,
                  m=None):
-        self.joint = PCA.from_precomputed(n_components=joint['rank'],
-                                          scores=joint['scores'],
-                                          loadings=joint['loadings'],
-                                          svals=joint['svals'],
-                                          obs_names=obs_names,
-                                          var_names=var_names,
-                                          m=m)
+
+        if joint['rank'] == 0:
+            self.joint = EmptyPCA(obs_names=obs_names, var_names=var_names, m=m)
+
+        else:
+            self.joint = PCA.from_precomputed(n_components=joint['rank'],
+                                              scores=joint['scores'],
+                                              loadings=joint['loadings'],
+                                              svals=joint['svals'],
+                                              obs_names=obs_names,
+                                              var_names=var_names,
+                                              m=m)
+
+            self.joint.set_comp_names(['joint_comp_{}'.format(i)
+                                      for i in range(self.joint.rank)])
 
         if joint['full'] is not None:
             self.joint.full_ = pd.DataFrame(joint['full'],
@@ -735,25 +770,24 @@ class BlockSpecificResults():
         else:
             self.joint.full_ = None
 
-        self.joint.set_comp_names(['joint_comp_{}'.format(i)
-                                   for i in range(self.joint.rank)])
-
-        self.individual = PCA.from_precomputed(n_components=individual['rank'],
-                                               scores=individual['scores'],
-                                               loadings=individual['loadings'],
-                                               svals=individual['svals'],
-                                               obs_names=obs_names,
-                                               var_names=var_names,
-                                               m=m)
+        if individual['rank'] == 0:
+            self.individual = EmptyPCA(obs_names=obs_names, var_names=var_names, m=m)
+        else:
+            self.individual = PCA.from_precomputed(n_components=individual['rank'],
+                                                   scores=individual['scores'],
+                                                   loadings=individual['loadings'],
+                                                   svals=individual['svals'],
+                                                   obs_names=obs_names,
+                                                   var_names=var_names,
+                                                   m=m)
+            self.individual.set_comp_names(['indiv_comp_{}'.format(i)
+                                            for i in range(self.individual.rank)])
 
         if individual['full'] is not None:
             self.individual.full_ = pd.DataFrame(individual['full'],
                                                  index=obs_names, columns=var_names)
         else:
             self.individual.full_ = None
-
-        self.individual.set_comp_names(['indiv_comp_{}'.format(i)
-                                        for i in range(self.individual.rank)])
 
         if noise is not None:
             self.noise_ = pd.DataFrame(noise,

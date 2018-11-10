@@ -1,5 +1,10 @@
 # Updates
 
+## 11/08/18 (version 0.1.4)
+
+- bug fix: setting store_full = False now works
+- setting joint_rank = 0 now works
+
 ## 11/08/18 (version 0.1.3)
 
 - new diagnostic plots
