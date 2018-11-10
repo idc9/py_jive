@@ -103,3 +103,33 @@ class TestPCA(unittest.TestCase):
         # TODO: this is failing, it could be a numerical issue.
         pca = PCA(n_components=3).fit(self.X)
         self.assertTrue(np.allclose(pca.frob_norm_, true_frob_norm))
+
+    def test_centering(self):
+        """
+        Make sure PCA computes the correct centers. Also check center=False
+        works correctly.
+        """
+        self.assertTrue(np.allclose(self.pca.m_, self.X.mean(axis=0)))
+
+        # no centering
+        pca = PCA(n_components=4, center=False).fit(self.X)
+        self.assertTrue(pca.m_ is None)
+
+        Z = np.random.normal(size=(20, self.X.shape[1]))
+        V = pca.loadings_.values
+        self.assertTrue(np.allclose(pca.predict_scores(Z), np.dot(Z, V)))
+
+    def test_projection(self):
+        """
+        Make sure projection onto loadings subspace works
+        """
+        Z = np.random.normal(size=(10, self.d))
+
+        m = self.X.values.mean(axis=0)
+        V = self.pca.loadings_.values
+
+        Z_cent = Z - m.reshape(-1)
+        A = np.dot(Z_cent, V)
+        B = self.pca.predict_scores(Z)
+
+        self.assertTrue(np.allclose(A, B))

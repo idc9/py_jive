@@ -21,8 +21,7 @@ class TestFig2Runs(unittest.TestCase):
         X = pd.DataFrame(X, index=obs_names, columns=var_names['x'])
         Y = pd.DataFrame(Y, index=obs_names, columns=var_names['y'])
 
-        ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3})
-        ajive.fit(blocks={'x': X, 'y': Y})
+        ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3}).fit(blocks={'x': X, 'y': Y})
 
         self.ajive = ajive
         self.X = X
@@ -51,15 +50,17 @@ class TestFig2Runs(unittest.TestCase):
 
     def test_matrix_decomposition(self):
         """
-        check X = I + J + E
+        check X_centered = I + J + E
         """
-        Rx = self.X - (self.ajive.blocks['x'].joint.full_ +
+        X_cent = self.X - self.X.mean(axis=0)
+        Rx = X_cent - (self.ajive.blocks['x'].joint.full_ +
                        self.ajive.blocks['x'].individual.full_ +
                        self.ajive.blocks['x'].noise_)
 
         self.assertTrue(np.allclose(Rx, 0))
 
-        Ry = self.Y - (self.ajive.blocks['y'].joint.full_ +
+        Y_cent = self.Y - self.Y.mean(axis=0)
+        Ry = Y_cent - (self.ajive.blocks['y'].joint.full_ +
                        self.ajive.blocks['y'].individual.full_ +
                        self.ajive.blocks['y'].noise_)
 
@@ -173,6 +174,30 @@ class TestFig2Runs(unittest.TestCase):
         ajive.fit(blocks=[self.X, self.Y])
         self.assertTrue(ajive.blocks[0].individual.rank == 0)
         self.assertTrue(ajive.blocks[0].individual.scores_ is None)
+
+    def test_centering(self):
+        xmean = self.X.mean(axis=0)
+        ymean = self.Y.mean(axis=0)
+
+        self.assertTrue(np.allclose(self.ajive.centers_['x'], xmean))
+        self.assertTrue(np.allclose(self.ajive.blocks['x'].joint.m_, xmean))
+        self.assertTrue(np.allclose(self.ajive.blocks['x'].individual.m_, xmean))
+
+        self.assertTrue(np.allclose(self.ajive.centers_['y'], ymean))
+        self.assertTrue(np.allclose(self.ajive.blocks['y'].joint.m_, ymean))
+        self.assertTrue(np.allclose(self.ajive.blocks['y'].individual.m_, ymean))
+
+        # no centering
+        ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3}, center=False)
+        ajive = ajive.fit(blocks={'x': self.X, 'y': self.Y})
+        self.assertTrue(ajive.centers_['x'] is None)
+        self.assertTrue(ajive.centers_['y'] is None)
+
+        # only center x
+        ajive = AJIVE(init_signal_ranks={'x': 2, 'y': 3}, center={'x': True, 'y': False})
+        ajive = ajive.fit(blocks={'x': self.X, 'y': self.Y})
+        self.assertTrue(np.allclose(ajive.centers_['x'], xmean))
+        self.assertTrue(ajive.centers_['y'] is None)
 
 
 if __name__ == '__main__':
