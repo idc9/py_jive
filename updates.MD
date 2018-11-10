@@ -4,6 +4,7 @@
 
 - bug fix: setting store_full = False now works
 - setting joint_rank/individual_ranks = 0 now works
+- bug fix: centers now computed correctly
 
 ## 11/08/18 (version 0.1.3)
 

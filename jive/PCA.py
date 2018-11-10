@@ -301,7 +301,7 @@ class PCA(object):
         Y: array-like, shape (n_new_samples, n_features)
         """
         s = np.dot(Y, self.loadings_)
-        if self.center:
+        if self.m_ is not None:
             s -= np.dot(self.m_, self.loadings_)
         return s
 

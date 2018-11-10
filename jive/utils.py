@@ -106,14 +106,18 @@ def centering(X, method='mean'):
         The column means of X.
     """
 
-    if method == 'mean':
-        center = np.array(X.mean(axis=0)).reshape(-1)
-    else:
-        center = np.zeros(X.shape[1])
+    if type(method) == bool and method:
+        method = 'mean'
 
     if issparse(X):
         raise NotImplementedError
-        # return MeanCentered(blocks[bn], centers_[bn]), center
-
+        # X_centered = MeanCentered(blocks[bn], centers_[bn])
     else:
-        return X - center, center
+        if method == 'mean':
+            center = np.array(X.mean(axis=0)).reshape(-1)
+            X_centered = X - center
+        else:
+            center = None
+            X_centered = X
+
+    return X_centered, center
