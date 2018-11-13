@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def comp_plot(values, nticks=10):
+def comp_plot(values, nticks=None):
     """
     Parameters
     ----------
@@ -17,11 +17,12 @@ def comp_plot(values, nticks=10):
 
     plt.ylim([1.1*min(0, min(values)), 1.1 * max(values)])
     plt.xlim([-.01 * n, (n - 1) * 1.1])
-    nticks = min(nticks, n)
-    plt.xticks(int(n/nticks) * np.arange(nticks))
+    if nticks is not None:
+        nticks = min(nticks, n)
+        plt.xticks(int(n/nticks) * np.arange(nticks))
 
 
-def plot_var_expl_prop(var_expl_prop, nticks=10):
+def plot_var_expl_prop(var_expl_prop, nticks=None):
     """
     Plots the proportion of variance explained for each PCA component
 
@@ -36,7 +37,7 @@ def plot_var_expl_prop(var_expl_prop, nticks=10):
     plt.xlabel('component index')
 
 
-def plot_var_expl_cum(var_expl_cum, nticks=10):
+def plot_var_expl_cum(var_expl_cum, nticks=None):
     """
     Plots the cumulative variance explained for PCA components.
 
@@ -50,7 +51,7 @@ def plot_var_expl_cum(var_expl_cum, nticks=10):
     plt.xlabel('component index')
 
 
-def scree_plot(sv, log=False, diff=False, nticks=10):
+def scree_plot(sv, log=False, diff=False, nticks=None):
     """
     Makes a scree plot of the singular values.
 

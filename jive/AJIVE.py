@@ -36,8 +36,9 @@ class AJIVE(object):
     reconsider_joint_components: bool
         TODO: explain
 
-    wedin_percentile: int (default=95)
-        Percentile for wedin bound cutoff for estimating joint rank.
+    wedin_percentile: int (default=5)
+        Percentile for wedin (lower) bound cutoff for squared singular values
+        used to estimate joint rank.
 
     n_wedin_samples: int (default=1000)
         Number of wedin bound samples to draw.
@@ -45,9 +46,9 @@ class AJIVE(object):
     precomp_wedin_samples {None, dict of array-like, list of array-like}
         Precomputed Wedin samples for each data block.
 
-    randdir_percentile: int (default=5)
-        Percentile for random direction bound cutoff
-        for estimating joint rank.
+    randdir_percentile: int (default=95)
+        Percentile for random direction (lower) bound cutoff for squared
+        singular values used to estimate joint rank..
 
     n_randdir_samples: int (default=1000)
         Number of random directions samples to draw.
@@ -111,9 +112,9 @@ class AJIVE(object):
                  joint_rank=None, indiv_ranks=None,
                  center=True,
                  reconsider_joint_components=True,
-                 wedin_percentile=95, n_wedin_samples=1000,
+                 wedin_percentile=5, n_wedin_samples=1000,
                  precomp_wedin_samples=None,
-                 randdir_percentile=5, n_randdir_samples=1000,
+                 randdir_percentile=95, n_randdir_samples=1000,
                  precomp_randdir_samples=None,
                  store_full=True, n_jobs=None):
 
@@ -354,7 +355,7 @@ class AJIVE(object):
                     rank = sum(D > self.sv_threshold_[bn])
 
                     if rank == 0:
-                        U, D, V = None
+                        U, D, V = None, None, None
                     else:
                         U = U[:, 0:rank]
                         D = D[0:rank]

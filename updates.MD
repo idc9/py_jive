@@ -1,10 +1,17 @@
 # Updates
 
+## 11/08/18 (version 0.1.5)
+
+- bug fix: wedin/random direction percentiles switched to correct singular value scale
+- Problems with indiv_rank =0 and pca scores projection.
+
+
 ## 11/08/18 (version 0.1.4)
 
 - bug fix: setting store_full = False now works
 - setting joint_rank/individual_ranks = 0 now works
 - bug fix: centers now computed correctly
+- got rid of nticks for scree plots
 
 ## 11/08/18 (version 0.1.3)
 

@@ -323,7 +323,7 @@ class PCA(object):
         if Y is None:
             scores = self.scores_.values
         else:
-            scores = self.predict_scores()
+            scores = self.predict_scores(Y)
 
         return pca_reconstruct(U=scores, D=self.svals_, V=self.loadings_,
                                m=self.m_)
@@ -379,7 +379,7 @@ class PCA(object):
         """
         plot_scores_hist(self.scores(norm=norm).iloc[:, comp], comp=comp, **kwargs)
 
-    def plot_scree(self, log=False, diff=False, nticks=10):
+    def plot_scree(self, log=False, diff=False):
         """
         Makes a scree plot of the singular values.
 
@@ -390,31 +390,18 @@ class PCA(object):
 
         diff: bool
             Plot difference of successive singular values.
-
-        nticks: int
-            Number of tick marks to show.
         """
-        scree_plot(self.svals_.values, log=log, diff=diff, nticks=10)
+        scree_plot(self.svals_.values, log=log, diff=diff)
 
-    def plot_var_expl_prop(self, nticks=10):
+    def plot_var_expl_prop(self):
         """
         Plots the proportion of variance explained for each component.
-
-        Parameters
-        ----------
-        nticks: int
-            Number of tick marks to show.
         """
         plot_var_expl_prop(self.var_expl_prop_)
 
-    def plot_var_expl_cum(self, nticks=10):
+    def plot_var_expl_cum(self):
         """
         Plots the cumulative variance explained.
-
-        Parameters
-        ----------
-        nticks: int
-            Number of tick marks to show.
         """
         plot_var_expl_cum(self.var_expl_cum_)
 
