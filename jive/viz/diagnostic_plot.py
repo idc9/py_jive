@@ -6,8 +6,8 @@ def plot_joint_diagnostic(joint_svals,
                           wedin_sv_samples,
                           random_sv_samples,
                           min_signal_rank,
-                          wedin_percentile=95,
-                          random_percentile=5,
+                          wedin_percentile=5,
+                          random_percentile=95,
                           fontsize=20):
 
     fontsize_large = fontsize
