@@ -1,5 +1,6 @@
 import numpy as np
 import warnings
+import matplotlib.pyplot as plt
 from scipy.sparse import issparse
 from copy import deepcopy
 from sklearn.externals.joblib import load, dump
@@ -10,9 +11,11 @@ from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_o
 from jive.wedin_bound import get_wedin_samples
 from jive.random_direction import sample_randdir
 from jive.viz.diagnostic_plot import plot_joint_diagnostic
+from jive.viz.viz import plot_loading
 from jive.PCA import PCA
 
-
+# TODO: give user option to store initial SVD
+# TODO: common loadings direct regression
 class AJIVE(object):
     """
     Angle-based Joint and Individual Variation Explained
@@ -400,6 +403,7 @@ class AJIVE(object):
             self.blocks[bn] = BlockSpecificResults(joint=block_specific[bn]['joint'],
                                                    individual=block_specific[bn]['individual'],
                                                    noise=block_specific[bn]['noise'],
+                                                   CNS=joint_scores,
                                                    block_name=bn,
                                                    obs_names=obs_names,
                                                    var_names=var_names[bn],
@@ -738,7 +742,7 @@ class BlockSpecificResults(object):
         Name of this block.
 
     """
-    def __init__(self, joint, individual, noise,
+    def __init__(self, joint, individual, noise, CNS, # X,
                  obs_names=None, var_names=None, block_name=None,
                  m=None, shape=None):
 
@@ -784,6 +788,62 @@ class BlockSpecificResults(object):
             self.noise_ = None
 
         self.block_name = block_name
+
+        # compute common normalized loadings
+        # U, D, V = self.joint.get_UDV()
+        U, D, V = joint['scores'], joint['svals'], joint['loadings']
+
+        common_loadigs = V.dot(np.multiply(U, D).T.dot(CNS))
+        col_norms = np.linalg.norm(common_loadigs, axis=0)
+        common_loadigs *= (1.0/col_norms)
+
+        self.common_loadigs_ = pd.DataFrame(common_loadigs,
+                                            index=var_names,
+                                            columns=['comp_{}'.format(i)
+                                                     for i in range(CNS.shape[1])])
+
+        # self.common_loadings_reg_ = regression coef from X ~ CNS
+
+
+    def common_loadings(self, np=False):
+        # TODO: should we keep this function to match the PCA object?
+        if np:
+            return self.common_loadigs_.values
+        else:
+            return self.common_loadigs_
+
+    def plot_common_loading(self, comp, abs_sorted=True, show_var_names=True,
+                            significant_vars=None, show_top=None, title=True):
+        """
+        Plots the values for each feature of a single loading component.
+
+        Parameters
+        ----------
+        comp: int
+            Which PCA component.
+
+        abs_sorted: bool
+            Whether or not to sort components by their absolute values.
+
+        significant_vars: {None, array-like}, shape (n_featurse, )
+            Indicated which features are significant in this component.
+
+        show_top: {None, int}
+            Will only display this number of top loadings components when
+            sorting by absolute value.
+
+        title: {str, bool}
+            Plot title. User can provide their own otherwise will
+            use default title.
+        """
+        plot_loading(v=self.common_loadigs_.iloc[:, comp],
+                     abs_sorted=abs_sorted, show_var_names=show_var_names,
+                     significant_vars=significant_vars, show_top=show_top)
+
+        if type(title) == str:
+            plt.title(title)
+        elif title:
+            plt.title('common loadings comp {}'.format(comp))
 
     def __repr__(self):
         return 'Block: {}, individual rank: {}, joint rank: {}'.format(self.block_name, self.individual.rank, self.joint.rank)
