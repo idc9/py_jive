@@ -33,7 +33,8 @@ def qqplot(x, loc='mean', scale='std'):
 
 
 def plot_loading(v, abs_sorted=True, show_var_names=True,
-                 significant_vars=None, show_top=None):
+                 significant_vars=None, show_top=None,
+                 colors=None):
     """
     Plots a single loadings component.
 
@@ -52,11 +53,22 @@ def plot_loading(v, abs_sorted=True, show_var_names=True,
     show_top: {None, array-like}
         Will only display this number of top loadings components when
         sorting by absolute value.
+
+    colors: None, array-like
+        Colors for each loading. If None, will use sign.
     """
+    if hasattr(v, 'name'):
+        xlab = v.name
+    else:
+        xlab = ''
+
     if type(v) != pd.Series:
         v = pd.Series(v, index=['feature {}'.format(i) for i in range(len(v))])
         if significant_vars is not None:
             significant_vars = v.index.iloc[significant_vars]
+    else:
+        if colors is not None:
+            colors = colors.loc[v.index]
 
     if abs_sorted:
         v_abs_sorted = np.abs(v).sort_values()
@@ -77,26 +89,35 @@ def plot_loading(v, abs_sorted=True, show_var_names=True,
         signs[v.index.difference(significant_vars)] = 'zero'
     else:
         signs[v == 0] = 'zero'
-    s2c = {'pos': 'blue', 'neg': 'red', 'zero': 'grey'}
-    colors = signs.apply(lambda x: s2c[x])
+    s2c = {'pos': 'red', 'neg': 'blue', 'zero': 'grey'}
+
+    if colors is None:
+        colors = signs.apply(lambda x: s2c[x])
 
     # plt.figure(figsize=[5, 10])
     plt.scatter(v, inds, color=colors)
     plt.axvline(x=0, alpha=.5, color='black')
-    plt.xlabel('value')
+    plt.xlabel(xlab)
     if show_var_names:
         plt.yticks(inds, v.index)
 
     max_abs = np.abs(v).max()
-    plt.xlim(-1.2 * max_abs, 1.2 * max_abs)
+    xmin = -1.2 * max_abs
+    xmax = 1.2 * max_abs
+    if np.mean(signs == 'pos') == 1:
+        xmin = 0
+    elif np.mean(signs == 'neg') == 1:
+        xmax = 0
+    elif np.mean(signs == 'zero') == 1:
+        xmin = 1
+        xmax = 1
+
+    plt.xlim(xmin, xmax)
 
     for t, c in zip(plt.gca().get_yticklabels(), colors):
         t.set_color(c)
         if c != 'grey':
             t.set_fontweight('bold')
-
-    # if comp is not None: # TODO: kill this
-    #     plt.title('loading component {}'.format(comp))
 
 
 def plot_scores_hist(s, comp, **kwargs):

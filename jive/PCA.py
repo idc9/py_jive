@@ -221,10 +221,15 @@ class PCA(object):
         """
         return np.array(self.loadings_.index)
 
-    def set_comp_names(self, comp_names):
+    def set_comp_names(self, comp_names=None, base=None, zero_index=True):
         """
         Resets the component names.
         """
+        if comp_names is None:
+            comp_names = get_comp_names(base=base,
+                                        num=len(self.scores_.columns),
+                                        zero_index=zero_index)
+
         self.scores_.columns = comp_names
         self.svals_.index = comp_names
         self.loadings_.columns = comp_names
@@ -291,21 +296,21 @@ class PCA(object):
         """
         return self.scores_.values, self.svals_.values, self.loadings_.values
 
-    def predict_scores(self, Y):
+    def predict_scores(self, X):
         """
         Projects a new data matrix Y onto the loadings and returns the
         coordinates (scores) in the PCA subspace.
 
         Parameters
         ----------
-        Y: array-like, shape (n_new_samples, n_features)
+        X: array-like, shape (n_new_samples, n_features)
         """
-        s = np.dot(Y, self.loadings_)
+        s = np.dot(X, self.loadings_)
         if self.m_ is not None:
             s -= np.dot(self.m_, self.loadings_)
         return s
 
-    def predict_reconstruction(self, Y=None):
+    def predict_reconstruction(self, X=None):
         """
         Reconstructs the data in the original spaces (R^n_features). I.e projects
         each data point onto the rank n_components PCA affine subspace
@@ -320,13 +325,35 @@ class PCA(object):
             of the training ddata.
 
         """
-        if Y is None:
-            scores = self.scores_.values
+        # TODO: should we make a separate predict_train_reconstruction function?
+        if X is None:
+            proj = _unnorm_scores(self.scores_.values, self.svals_)
         else:
-            scores = self.predict_scores(Y)
+            proj = self.predict_scores(X)
 
-        return pca_reconstruct(U=scores, D=self.svals_, V=self.loadings_,
-                               m=self.m_)
+        return pca_reconstruct(proj, V=self.loadings_, m=self.m_)
+
+    def reconstruction_error(self, X):
+        """
+        Computes the mean squared reconstruction error i.e.
+        ||X_hat - X||_F^2 / (X.shape[0] * X.shape[1])
+
+        Parameters
+        ----------
+        X array-like, shape (n_new_samples, n_features)
+        """
+        X_hat = self.predict_reconstruction(X)
+        sq_diffs = (X_hat - np.array(X)).reshape(-1) ** 2
+
+        return np.mean(sq_diffs)
+
+    def score(self, X, y=None):
+        """
+        Returns the mean squared reconstruction error from the samples.
+        Makes this class sklearn compatible.
+        """
+        # TODO: confusing notation: score and scores, what should we do about this?
+        return self.reconstruction_error(X)
 
     def plot_loading(self, comp, abs_sorted=True, show_var_names=True,
                      significant_vars=None, show_top=None, title=True):
@@ -406,7 +433,7 @@ class PCA(object):
         plot_var_expl_cum(self.var_expl_cum_)
 
     def plot_scores(self, norm=True,
-                    start=0, n_components=3,  classes=None, class_name=None,
+                    start=0, n_components=3, classes=None, class_name=None,
                     dist_kws={}, scatter_kws={}):
 
         """
@@ -458,7 +485,7 @@ class PCA(object):
         Computes the correlation between each PCA component and a continuous
         variable.
         """
-        return np.array([np.corrcoef(self.scores(norm=norm).iloc[:, i], y)[0, 1]
+        return np.array([np.corrcoef(self.scores().iloc[:, i], y)[0, 1]
                          for i in range(self.n_components)])
 
     def plot_interactive_scores_slice(self, comp1, comp2, norm=True, classes=None):
@@ -580,7 +607,7 @@ def _unnorm_scores(U, D):
     return UD
 
 
-def pca_reconstruct(U, D, V, m=None):
+def pca_reconstruct(proj, V, m=None):
     """
     Let the rank K pca of X be given by X ~= U D V^T. X in R^n x d
     where n = number of observations and d = number of variables.
@@ -591,21 +618,19 @@ def pca_reconstruct(U, D, V, m=None):
 
     Parameters
     ---------
-    u: the vector or matrix of scores (a vector in R^K or N x K matrix)
-
-    D: the singular values (a list of length K)
+    proj: the projections of the data onto the PCA subspace i.e.
+        for the training data proj = UD
 
     V: the loadings (nd.array of dimension d x K)
 
     m: the mean of the data (vector in R^d)
     """
 
-    UD = _unnorm_scores(U, D)
-    R = np.dot(UD, V.T)
+    R = np.dot(proj, V.T)
     if m is not None:
         R += m
 
-    if np.array(U).ndim == 1:  # if U is a vector, then return as a vector
+    if np.array(proj).ndim == 1:  # if proj is a vector, then return as a vector
         return R.reshape(-1)
     else:
         return R
@@ -622,3 +647,14 @@ def _safe_frob_norm(X):
         return np.sqrt(sum(X.data ** 2))
     else:
         return norm(np.array(X), ord='fro')
+
+
+def get_comp_names(base, num, zero_index=True):
+    if zero_index:
+        start = 0
+        stop = num
+    else:
+        start = 1
+        stop = num + 1
+
+    return ['{}_{}'.format(base, i) for i in range(start, stop)]
