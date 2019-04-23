@@ -804,10 +804,10 @@ class BlockSpecificResults(object):
         # compute common normalized loadings
         # U, D, V = self.joint.get_UDV()
         U, D, V = joint['scores'], joint['svals'], joint['loadings']
-
-        common_loadigs = V.dot(np.multiply(U, D).T.dot(CNS))
-        col_norms = np.linalg.norm(common_loadigs, axis=0)
-        common_loadigs *= (1.0 / col_norms)
+        common_loadigs = V.dot(np.multiply(U, 1.0 / D).T.dot(CNS))
+        # common_loadigs = V.dot(np.multiply(U, D).T.dot(CNS))
+        # col_norms = np.linalg.norm(common_loadigs, axis=0)
+        # common_loadigs *= (1.0 / col_norms)
 
         base = 'common'
         if block_name is None:
