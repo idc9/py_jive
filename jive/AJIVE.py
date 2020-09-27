@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from scipy.sparse import issparse
 from copy import deepcopy
-from sklearn.externals.joblib import load, dump
+from joblib import load, dump
 import pandas as pd
 
 from jive.utils import svd_wrapper, centering

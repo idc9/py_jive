@@ -1,6 +1,6 @@
 import numpy as np
 from jive.utils import svd_wrapper
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 
 def sample_randdir(num_obs, signal_ranks, R=1000, n_jobs=None):

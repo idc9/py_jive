@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 
 def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None):
