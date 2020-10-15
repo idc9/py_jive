@@ -3,8 +3,9 @@ import warnings
 import matplotlib.pyplot as plt
 from scipy.sparse import issparse
 from copy import deepcopy
-from sklearn.externals.joblib import load, dump
+from joblib import load, dump
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 
 from jive.utils import svd_wrapper, centering
 from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
@@ -414,7 +415,9 @@ class AJIVE(object):
                                      var_names=var_names[bn],
                                      m=self.centers_[bn],
                                      shape=blocks[bn].shape,
-                                     zero_index_names=self.zero_index_names)
+                                     zero_index_names=self.zero_index_names,
+                                     init_signal_svd=init_signal_svd[bn],
+                                     X=blocks[bn])
 
         return self
 
@@ -750,7 +753,8 @@ class BlockSpecificResults(object):
     """
     def __init__(self, joint, individual, noise, CNS,  # X,
                  obs_names=None, var_names=None, block_name=None,
-                 m=None, shape=None, zero_index_names=True):
+                 m=None, shape=None, zero_index_names=True,
+                 init_signal_svd=None, X=None):
 
         self.joint = PCA.from_precomputed(n_components=joint['rank'],
                                           scores=joint['scores'],
@@ -803,7 +807,9 @@ class BlockSpecificResults(object):
 
         # compute common normalized loadings
         # U, D, V = self.joint.get_UDV()
-        U, D, V = joint['scores'], joint['svals'], joint['loadings']
+
+        U, D, V = init_signal_svd['scores'], init_signal_svd['svals'], \
+            init_signal_svd['loadings']
         common_loadigs = V.dot(np.multiply(U, 1.0 / D).T.dot(CNS))
         # common_loadigs = V.dot(np.multiply(U, D).T.dot(CNS))
         # col_norms = np.linalg.norm(common_loadigs, axis=0)
@@ -814,18 +820,35 @@ class BlockSpecificResults(object):
             base = '{}_{}'.format(block_name, base)
         comp_names = get_comp_names(base=base, num=CNS.shape[1],
                                     zero_index=zero_index_names)
-        self.common_loadigs_ = pd.DataFrame(common_loadigs,
-                                            index=var_names,
-                                            columns=comp_names)
+        self.common_loadings_ = pd.DataFrame(common_loadigs,
+                                             index=var_names,
+                                             columns=comp_names)
 
-        # self.common_loadings_reg_ = regression coef from X ~ CNS
+        # TODO: delete
+        # # regression on J
+        # U, D, V = joint['scores'], joint['svals'], joint['loadings']
+        # common_loadings_reg_J = \
+        #     V.dot(np.multiply(U, 1.0 / D).T.dot(CNS))
+        # self.common_loadings_reg_J = pd.DataFrame(common_loadings_reg_J,
+        #                                           index=var_names,
+        #                                           columns=comp_names)
+
+        # regression on X
+        common_loadings_reg_X = []
+        for j in range(CNS.shape[1]):
+            lm = LinearRegression().fit(X, CNS[:, j])
+            common_loadings_reg_X.append(lm.coef_)
+        common_loadings_reg_X = np.array(common_loadings_reg_X).T
+        self.common_loadings_reg_X = pd.DataFrame(common_loadings_reg_X,
+                                                  index=var_names,
+                                                  columns=comp_names)
 
     def common_loadings(self, np=False):
         # TODO: should we keep this function to match the PCA object?
         if np:
-            return self.common_loadigs_.values
+            return self.common_loadings_.values
         else:
-            return self.common_loadigs_
+            return self.common_loadings_
 
     def plot_common_loading(self, comp, abs_sorted=True, show_var_names=True,
                             significant_vars=None, show_top=None, title=True):
@@ -851,7 +874,7 @@ class BlockSpecificResults(object):
             Plot title. User can provide their own otherwise will
             use default title.
         """
-        plot_loading(v=self.common_loadigs_.iloc[:, comp],
+        plot_loading(v=self.common_loadings_.iloc[:, comp],
                      abs_sorted=abs_sorted, show_var_names=show_var_names,
                      significant_vars=significant_vars, show_top=show_top)
 

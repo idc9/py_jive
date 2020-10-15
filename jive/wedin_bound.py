@@ -1,9 +1,8 @@
 import numpy as np
-from sklearn.externals.joblib import Parallel, delayed
-import torch
+from joblib import Parallel, delayed
 
 
-def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None, device=None):
+def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None):
     """
     Computes the wedin bound using the sample-project procedure. This method
     does not require the full SVD.
@@ -33,8 +32,6 @@ def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None, device=None):
         but not both.
 
     """
-    if sum((n_jobs is not None, device is not None)) <= 1:
-        raise ValueError('At most one of n_jobs and device can be not None.')
 
     if n_jobs is not None:
         basis = V[:, 0:rank]
@@ -44,21 +41,6 @@ def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None, device=None):
         basis = U[:, 0:rank]
         U_norm_samples = Parallel(n_jobs=n_jobs)\
             (delayed(_get_sample)(X.T, basis) for i in range(R))
-
-    elif device is not None:  # use pytorch backend
-
-        with torch.no_grad():
-            X = np.array(X)  # make sure X is numpy
-            X = torch.tensor(X).to(device)
-
-            basis = torch.tensor(V[:, 0:rank]).to(device)
-            V_norm_samples = [_get_sample_pytorch(X, basis)
-                              for r in range(R)]
-
-            basis = torch.tensor(U[:, 0:rank]).to(device)
-            X = X.transpose(1, 0)
-            U_norm_samples = [_get_sample_pytorch(X, basis)
-                              for r in range(R)]
 
     else:
         basis = V[:, 0:rank]
@@ -93,25 +75,3 @@ def _get_sample(X, basis):
 
     # compute  operator L2 norm
     return np.linalg.norm(X.dot(vecs), ord=2)
-
-
-def _get_sample_pytorch(X, basis):
-    dim, rank = basis.shape
-    device = X.device
-    dtype = X.dtype
-
-    # sample from isotropic distribution
-    vecs = torch.randn(size=(dim, rank), device=device, dtype=dtype)
-
-    # project onto space orthogonal to cols of B
-    vecs = vecs - basis @ (basis.transpose(1, 0) @ vecs)
-
-    # orthonormalize
-    vecs, _ = torch.qr(vecs)
-
-    # compute  operator L2 norm
-    proj = X @ vecs
-
-    # TODO: figureout operator 2 norm in pytorch
-    proj = proj.cpu().numpy()
-    return np.linalg.norm(proj, ord=2)
