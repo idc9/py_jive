@@ -1,6 +1,8 @@
+**This version of the package is now deprecated! The new version of the AJIVE code can be found under https://github.com/idc9/mvdr**
+
+
 jive
 ----
-**This version of the package is now deprecated! The new version of the AJIVE code can be found under https://github.com/idc9/mvdr**
 
 **author**: `Iain Carmichael`_
 
