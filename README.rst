@@ -119,7 +119,8 @@ bug fixes, spelling errors, new features, etc.
 Citation
 ^^^^^^^^
 
-A `Journal of Statistical Software`_ paper is coming soon.
+.. image:: https://zenodo.org/badge/94366513.svg
+   :target: https://zenodo.org/badge/latestdoi/94366513
 
 .. _Iain Carmichael: https://idc9.github.io/
 .. _Angle-Based Joint and Individual Variation Explained: https://arxiv.org/pdf/1704.02060.pdf
