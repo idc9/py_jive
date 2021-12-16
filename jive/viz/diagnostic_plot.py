@@ -87,7 +87,7 @@ def plot_joint_diagnostic(joint_svals,
     plt.xlabel('squared singular value', fontsize=fontsize_large)
     plt.legend(fontsize=fontsize_small)
     plt.ylim([0, 1])
-    plt.xlim(xmin=1)
+    plt.xlim(1)
     plt.title('joint singular value thresholding'
               ' (joint rank estimate = {:d})'.format(joint_rank_est),
               fontsize=fontsize_large)

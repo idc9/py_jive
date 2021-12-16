@@ -1,18 +1,23 @@
 import numpy as np
 import warnings
+import matplotlib.pyplot as plt
 from scipy.sparse import issparse
 from copy import deepcopy
 from joblib import load, dump
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 
 from jive.utils import svd_wrapper, centering
 from jive.lazymatpy.templates.matrix_transformations import col_proj, col_proj_orthog
 from jive.wedin_bound import get_wedin_samples
 from jive.random_direction import sample_randdir
 from jive.viz.diagnostic_plot import plot_joint_diagnostic
-from jive.PCA import PCA
+from jive.viz.viz import plot_loading
+from jive.PCA import PCA, get_comp_names
 
 
+# TODO: give user option to store initial SVD
+# TODO: common loadings direct regression
 class AJIVE(object):
     """
     Angle-based Joint and Individual Variation Explained
@@ -105,6 +110,8 @@ class AJIVE(object):
     indiv_ranks: dict of ints
         The individual ranks for each block.
 
+    zero_index_names: bool
+        Whether or not to zero index component names.
     """
 
     def __init__(self,
@@ -116,7 +123,7 @@ class AJIVE(object):
                  precomp_wedin_samples=None,
                  randdir_percentile=95, n_randdir_samples=1000,
                  precomp_randdir_samples=None,
-                 store_full=True, n_jobs=None):
+                 store_full=True, n_jobs=None, zero_index_names=True):
 
         self.init_signal_ranks = init_signal_ranks
         self.joint_rank = joint_rank
@@ -141,6 +148,7 @@ class AJIVE(object):
         self.store_full = store_full
 
         self.n_jobs = n_jobs
+        self.zero_index_names = zero_index_names
 
     def __repr__(self):
         # return 'JIVE'
@@ -211,7 +219,7 @@ class AJIVE(object):
             # and init_signal_ranks[bn] + 1 st singular value. Recall that
             # python is zero indexed.
             self.sv_threshold_[bn] = (D[self.init_signal_ranks[bn] - 1] \
-                                      + D[self.init_signal_ranks[bn]])/2
+                                      + D[self.init_signal_ranks[bn]]) / 2
 
             init_signal_svd[bn] = {'scores': U[:, 0:self.init_signal_ranks[bn]],
                                    'svals': D[0:self.init_signal_ranks[bn]],
@@ -284,8 +292,8 @@ class AJIVE(object):
                                            loadings=joint_loadings[:, 0:self.joint_rank],
                                            obs_names=obs_names)
 
-        self.common.set_comp_names(['common_comp_{}'.format(i)
-                                    for i in range(self.common.rank)])
+        self.common.set_comp_names(base='common',
+                                   zero_index=self.zero_index_names)
 
         #######################################
         # step 3: compute final decomposition #
@@ -397,14 +405,19 @@ class AJIVE(object):
         # save block specific estimates
         self.blocks = {}
         for bn in block_specific.keys():
-            self.blocks[bn] = BlockSpecificResults(joint=block_specific[bn]['joint'],
-                                                   individual=block_specific[bn]['individual'],
-                                                   noise=block_specific[bn]['noise'],
-                                                   block_name=bn,
-                                                   obs_names=obs_names,
-                                                   var_names=var_names[bn],
-                                                   m=self.centers_[bn],
-                                                   shape=blocks[bn].shape)
+            self.blocks[bn] = \
+                BlockSpecificResults(joint=block_specific[bn]['joint'],
+                                     individual=block_specific[bn]['individual'],
+                                     noise=block_specific[bn]['noise'],
+                                     CNS=joint_scores,
+                                     block_name=bn,
+                                     obs_names=obs_names,
+                                     var_names=var_names[bn],
+                                     m=self.centers_[bn],
+                                     shape=blocks[bn].shape,
+                                     zero_index_names=self.zero_index_names,
+                                     init_signal_svd=init_signal_svd[bn],
+                                     X=blocks[bn])
 
         return self
 
@@ -738,9 +751,10 @@ class BlockSpecificResults(object):
         Name of this block.
 
     """
-    def __init__(self, joint, individual, noise,
+    def __init__(self, joint, individual, noise, CNS,  # X,
                  obs_names=None, var_names=None, block_name=None,
-                 m=None, shape=None):
+                 m=None, shape=None, zero_index_names=True,
+                 init_signal_svd=None, X=None):
 
         self.joint = PCA.from_precomputed(n_components=joint['rank'],
                                           scores=joint['scores'],
@@ -751,8 +765,10 @@ class BlockSpecificResults(object):
                                           m=m, shape=shape)
 
         if joint['rank'] != 0:
-            self.joint.set_comp_names(['joint_comp_{}'.format(i)
-                                       for i in range(self.joint.rank)])
+            base = 'joint'
+            if block_name is not None:
+                base = '{}_{}'.format(block_name, base)
+            self.joint.set_comp_names(base=base, zero_index=zero_index_names)
 
         if joint['full'] is not None:
             self.joint.full_ = pd.DataFrame(joint['full'],
@@ -768,22 +784,104 @@ class BlockSpecificResults(object):
                                                var_names=var_names,
                                                m=m, shape=shape)
         if individual['rank'] != 0:
-            self.individual.set_comp_names(['indiv_comp_{}'.format(i)
-                                            for i in range(self.individual.rank)])
+            base = 'indiv'
+            if block_name is not None:
+                base = '{}_{}'.format(block_name, base)
+            self.individual.set_comp_names(base=base,
+                                           zero_index=zero_index_names)
 
         if individual['full'] is not None:
             self.individual.full_ = pd.DataFrame(individual['full'],
-                                                 index=obs_names, columns=var_names)
+                                                 index=obs_names,
+                                                 columns=var_names)
         else:
             self.individual.full_ = None
 
         if noise is not None:
-            self.noise_ = pd.DataFrame(noise,
-                                       index=obs_names, columns=var_names)
+            self.noise_ = pd.DataFrame(noise, index=obs_names,
+                                       columns=var_names)
         else:
             self.noise_ = None
 
         self.block_name = block_name
+
+        # compute common normalized loadings
+        # U, D, V = self.joint.get_UDV()
+
+        U, D, V = init_signal_svd['scores'], init_signal_svd['svals'], \
+            init_signal_svd['loadings']
+        common_loadigs = V.dot(np.multiply(U, 1.0 / D).T.dot(CNS))
+        # common_loadigs = V.dot(np.multiply(U, D).T.dot(CNS))
+        # col_norms = np.linalg.norm(common_loadigs, axis=0)
+        # common_loadigs *= (1.0 / col_norms)
+
+        base = 'common'
+        if block_name is None:
+            base = '{}_{}'.format(block_name, base)
+        comp_names = get_comp_names(base=base, num=CNS.shape[1],
+                                    zero_index=zero_index_names)
+        self.common_loadings_ = pd.DataFrame(common_loadigs,
+                                             index=var_names,
+                                             columns=comp_names)
+
+        # TODO: delete
+        # # regression on J
+        # U, D, V = joint['scores'], joint['svals'], joint['loadings']
+        # common_loadings_reg_J = \
+        #     V.dot(np.multiply(U, 1.0 / D).T.dot(CNS))
+        # self.common_loadings_reg_J = pd.DataFrame(common_loadings_reg_J,
+        #                                           index=var_names,
+        #                                           columns=comp_names)
+
+        # regression on X
+        common_loadings_reg_X = []
+        for j in range(CNS.shape[1]):
+            lm = LinearRegression().fit(X, CNS[:, j])
+            common_loadings_reg_X.append(lm.coef_)
+        common_loadings_reg_X = np.array(common_loadings_reg_X).T
+        self.common_loadings_reg_X = pd.DataFrame(common_loadings_reg_X,
+                                                  index=var_names,
+                                                  columns=comp_names)
+
+    def common_loadings(self, np=False):
+        # TODO: should we keep this function to match the PCA object?
+        if np:
+            return self.common_loadings_.values
+        else:
+            return self.common_loadings_
+
+    def plot_common_loading(self, comp, abs_sorted=True, show_var_names=True,
+                            significant_vars=None, show_top=None, title=True):
+        """
+        Plots the values for each feature of a single loading component.
+
+        Parameters
+        ----------
+        comp: int
+            Which PCA component.
+
+        abs_sorted: bool
+            Whether or not to sort components by their absolute values.
+
+        significant_vars: {None, array-like}, shape (n_featurse, )
+            Indicated which features are significant in this component.
+
+        show_top: {None, int}
+            Will only display this number of top loadings components when
+            sorting by absolute value.
+
+        title: {str, bool}
+            Plot title. User can provide their own otherwise will
+            use default title.
+        """
+        plot_loading(v=self.common_loadings_.iloc[:, comp],
+                     abs_sorted=abs_sorted, show_var_names=show_var_names,
+                     significant_vars=significant_vars, show_top=show_top)
+
+        if type(title) == str:
+            plt.title(title)
+        elif title:
+            plt.title('common loadings comp {}'.format(comp))
 
     def __repr__(self):
         return 'Block: {}, individual rank: {}, joint rank: {}'.format(self.block_name, self.individual.rank, self.joint.rank)

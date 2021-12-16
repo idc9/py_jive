@@ -32,17 +32,17 @@ def sample_randdir(num_obs, signal_ranks, R=1000, n_jobs=None):
 
     if n_jobs is not None:
         random_sv_samples = Parallel(n_jobs=n_jobs)\
-            (delayed(_get_sample)(num_obs, signal_ranks)
+            (delayed(_get_rand_sample)(num_obs, signal_ranks)
              for i in range(R))
 
     else:
-        random_sv_samples = [_get_sample(num_obs, signal_ranks)
+        random_sv_samples = [_get_rand_sample(num_obs, signal_ranks)
                              for r in range(R)]
 
     return np.array(random_sv_samples)
 
 
-def _get_sample(num_obs, signal_ranks):
+def _get_rand_sample(num_obs, signal_ranks):
     M = [None for _ in range(len(signal_ranks))]
     for k in range(len(signal_ranks)):
 
@@ -54,4 +54,4 @@ def _get_sample(num_obs, signal_ranks):
     M = np.bmat(M)
     _, svs, __ = svd_wrapper(M, rank=1)
 
-    return max(svs) ** 2
+    return svs.item() ** 2

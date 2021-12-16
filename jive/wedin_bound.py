@@ -26,62 +26,38 @@ def get_wedin_samples(X, U, D, V, rank, R=1000, n_jobs=None):
         sklearn.externals.joblib.Parallel. If None, will not use parallel
         processing.
 
-    """
+    device: str, None
+        If not None, will do computations on GPU using pytorch. device is the
+        name of the gpu device to use. Either device or n_jobs can be used,
+        but not both.
 
-    # resample for U and V
-    U_norm_samples = norms_sample_project(X=X.T,
-                                          basis=U[:, 0:rank],
-                                          R=R, n_jobs=n_jobs)
-
-    V_norm_samples = norms_sample_project(X=X,
-                                          basis=V[:, 0:rank],
-                                          R=R, n_jobs=n_jobs)
-
-    sigma_min = D[rank - 1]  # TODO: double check -1
-    wedin_bound_samples = [min(max(U_norm_samples[r], V_norm_samples[r])/sigma_min, 1)
-                           for r in range(R)]
-
-    return wedin_bound_samples
-
-
-def norms_sample_project(X, basis, R=1000, n_jobs=None):
-    """
-    Samples vectors from space orthogonal to signal space as follows
-    - sample random vector from isotropic distribution
-    - project onto orthogonal complement of signal space and normalize
-
-    Parameters
-    ---------
-    X:
-        Rhe observed data
-
-    B:
-        Rhe basis for the signal col/rows space (e.g. the left/right singular vectors)
-
-    rank: int
-        Number of columns to resample
-
-    R: int
-        Number of samples
-
-
-    n_jobs: int, None
-        Number of jobs for parallel processing using
-        sklearn.externals.joblib.Parallel. If None, will not use parallel
-        processing.
-
-    Output
-    ------
-    an array of the resampled norms
     """
 
     if n_jobs is not None:
-        samples = Parallel(n_jobs=n_jobs)\
+        basis = V[:, 0:rank]
+        V_norm_samples = Parallel(n_jobs=n_jobs)\
             (delayed(_get_sample)(X, basis) for i in range(R))
-    else:
-        samples = [_get_sample(X, basis) for r in range(R)]
 
-    return np.array(samples)
+        basis = U[:, 0:rank]
+        U_norm_samples = Parallel(n_jobs=n_jobs)\
+            (delayed(_get_sample)(X.T, basis) for i in range(R))
+
+    else:
+        basis = V[:, 0:rank]
+        V_norm_samples = [_get_sample(X, basis) for r in range(R)]
+
+        basis = U[:, 0:rank]
+        U_norm_samples = [_get_sample(X.T, basis) for r in range(R)]
+
+    V_norm_samples = np.array(V_norm_samples)
+    U_norm_samples = np.array(U_norm_samples)
+
+    sigma_min = D[rank - 1]  # TODO: double check -1
+    wedin_bound_samples = [min(max(U_norm_samples[r],
+                                   V_norm_samples[r]) / sigma_min, 1)
+                           for r in range(R)]
+
+    return wedin_bound_samples
 
 
 def _get_sample(X, basis):
