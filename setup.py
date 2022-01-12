@@ -19,11 +19,11 @@ URL = 'https://github.com/idc9/py_jive'
 EMAIL = 'idc9@cornell.edu'
 AUTHOR = 'Iain Carmichael'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.2'
+VERSION = '0.2.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'scipy', 'pandas', 'seaborn', 'matplotlib', 'sklearn', 'statsmodels', 'joblib'
+    'numpy', 'scipy', 'pandas', 'seaborn', 'matplotlib', 'scikit-learn', 'statsmodels', 'joblib'
 ]
 
 # What packages are optional?
