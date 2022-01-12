@@ -23,13 +23,10 @@ VERSION = '0.2.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'scipy', 'pandas', 'seaborn', 'matplotlib', 'scikit-learn', 'statsmodels', 'joblib'
+    'numpy', 'scipy', 'pandas', 'seaborn', 'matplotlib', 'scikit-learn',
+    'statsmodels', 'joblib', 'bokeh'
 ]
 
-# What packages are optional?
-EXTRAS = {
-    'interactive_plotting': ['bokeh'],
-}
 
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
@@ -111,7 +108,6 @@ setup(
     #     'console_scripts': ['mycli=mymodule:cli'],
     # },
     install_requires=REQUIRED,
-    extras_require=EXTRAS,
     include_package_data=True,
     license='MIT',
     classifiers=[
